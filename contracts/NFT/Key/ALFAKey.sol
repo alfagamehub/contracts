@@ -28,6 +28,8 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
     mapping(address holder => EnumerableSet.UintSet tokens) internal _holderTokens;
     mapping(address holder => mapping (uint256 typeId => uint256 amount)) internal _holderAmounts;
 
+    /// @notice Initializes the ALFAKey contract with predefined token types and assigns roles to the deployer
+    /// @dev Grants DEFAULT_ADMIN_ROLE and EDITOR_ROLE to the deployer and adds initial token types
     constructor() ERC721("ALFA Key", "ALKEY") {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(EDITOR_ROLE, _msgSender());
@@ -42,7 +44,8 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
 
     /// Read methods
 
-    /// @notice Returns types list;
+    /// @notice Returns the list of all token types with their metadata and counts
+    /// @return An array of TokenType structs representing all existing token types
     function getTypes() public view returns (TokenType[] memory) {
         uint256 length = _types.length();
         TokenType[] memory list = new TokenType[](length);
@@ -55,12 +58,12 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
         return list;
     }
 
-    /// @notice Returns holder tokens list paginated;
-    /// @param holder Holder address;
-    /// @param offset Offset from the beginning;
-    /// @param limit Return array length limit;
-    /// @return Array of objects;
-    /// @return count Total holder tokens count;
+    /// @notice Returns a paginated list of tokens owned by a specific holder
+    /// @param holder The address of the token holder
+    /// @param offset The starting index from which to return tokens
+    /// @param limit The maximum number of tokens to return
+    /// @return An array of HolderToken structs representing the holder's tokens in the specified range
+    /// @return The total count of tokens owned by the holder
     function getTokens(address holder, uint256 offset, uint256 limit) public view returns (HolderToken[] memory, uint256 count) {
         count = _holderTokens[holder].length();
         if (offset >= count || limit == 0) return (new HolderToken[](0), count);
@@ -74,17 +77,17 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
         return (data, count);
     }
 
-    /// @notice Returns token image URI;
-    /// @param tokenId Token identificator;
-    /// @return URI
+    /// @notice Returns the URI of the token's image based on its type
+    /// @param tokenId The identifier of the token
+    /// @return The URI string of the token's image
     function tokenURI(uint256 tokenId) public view override(ERC721, IERC721Metadata) returns (string memory) {
         _requireOwned(tokenId);
         return _typeURI[tokenTypeId(tokenId)];
     }
 
-    /// @notice Returns token type data;
-    /// @param tokenId Token identificator;
-    /// @return data Object of token type;
+    /// @notice Returns detailed information about the token's type
+    /// @param tokenId The identifier of the token
+    /// @return data A TokenType struct containing metadata about the token's type
     function tokenType(uint256 tokenId) public view returns (TokenType memory data) {
         uint256 typeId = tokenTypeId(tokenId);
 
@@ -94,32 +97,32 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
         data.typeURI = _typeURI[typeId];
     }
 
-    /// @notice Returns token typeId;
-    /// @param tokenId Token identificator;
-    /// @return Type identificator;
+    /// @notice Returns the type identifier of a specific token
+    /// @param tokenId The identifier of the token
+    /// @return The typeId associated with the token
     function tokenTypeId(uint256 tokenId) public view returns (uint256) {
         _requireOwned(tokenId);
         return _tokenType[tokenId];
     }
 
-    /// @notice Returns total amount of specified type token;
-    /// @param typeId Type index;
-    /// @return Type tokens amount;
+    /// @notice Returns the total number of tokens of a specified type
+    /// @param typeId The identifier of the token type
+    /// @return The total count of tokens of the specified type
     function getTypeAmount(uint256 typeId) public view returns (uint256) {
         return _typeCount[typeId];
     }
 
-    /// @notice Returns holder amount of specified type token;
-    /// @param holder Holder address;
-    /// @param typeId Type index;
-    /// @return Type tokens amount;
+    /// @notice Returns the number of tokens of a specified type owned by a given holder
+    /// @param holder The address of the token holder
+    /// @param typeId The identifier of the token type
+    /// @return The count of tokens of the specified type owned by the holder
     function getTypeHolderAmount(address holder, uint256 typeId) public view returns (uint256) {
         return _holderAmounts[holder][typeId];
     }
 
-    /// @notice Returns holder amounts of tokens separated by token type
-    /// @param holder Holder address;
-    /// @return Array of amounts;
+    /// @notice Returns an array of token counts owned by a holder, separated by each token type
+    /// @param holder The address of the token holder
+    /// @return An array of uint256 representing the count of tokens per type owned by the holder
     function getHolderAmounts(address holder) public view returns (uint256[] memory) {
         uint256[] memory amounts = new uint256[](_types.length());
         for (uint256 i; i < _types.length(); i++) {
@@ -131,6 +134,11 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
 
     /// External methods
 
+    /// @notice Mints a new token of a specified type to a receiver address
+    /// @dev Caller must have MINTER_ROLE
+    /// @param receiver The address to receive the minted token
+    /// @param typeId The type identifier of the token to mint
+    /// @return newTokenId The identifier of the newly minted token
     function mint(address receiver, uint256 typeId) external onlyRole(MINTER_ROLE) returns (uint256 newTokenId) {
         _requireTypeExists(typeId);
         newTokenId = _tokenIndex++;
@@ -139,6 +147,10 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
         emit TokenMinted(typeId, receiver, newTokenId, _typeCount[typeId]);
     }
 
+    /// @notice Burns a token owned by a holder
+    /// @dev Caller must have BURNER_ROLE; the holder must be the actual owner of the token
+    /// @param holder The address of the token holder
+    /// @param tokenId The identifier of the token to burn
     function burn(address holder, uint256 tokenId) external onlyRole(BURNER_ROLE) {
         address realOwner = _requireOwned(tokenId);
         if (holder != realOwner) {
@@ -150,6 +162,9 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
         emit TokenBurned(typeId, holder, tokenId, _typeCount[typeId]);
     }
 
+    /// @notice Checks if the contract supports a given interface
+    /// @param interfaceId The interface identifier to check
+    /// @return True if the interface is supported, false otherwise
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC721, AccessControl) returns (bool) {
         return
             ERC721.supportsInterface(interfaceId)
@@ -159,10 +174,18 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
 
     /// Admin methods
 
+    /// @notice Adds a new token type with a name and URI
+    /// @dev Caller must have EDITOR_ROLE
+    /// @param typeName The name of the new token type
+    /// @param typeURI The URI associated with the new token type
+    /// @return newTypeId The identifier of the newly added token type
     function addType(string calldata typeName, string calldata typeURI) public onlyRole(EDITOR_ROLE) returns (uint256 newTypeId) {
         return _addType(typeName, typeURI);
     }
 
+    /// @notice Removes an existing token type if it has no tokens in use
+    /// @dev Caller must have EDITOR_ROLE; type count must be zero
+    /// @param typeId The identifier of the token type to remove
     function removeType(uint256 typeId) public onlyRole(EDITOR_ROLE) {
         _requireTypeExists(typeId);
         require(_typeCount[typeId] == 0, "Type already in use");
@@ -171,6 +194,11 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
         emit TypeRemoved(typeId);
     }
 
+    /// @notice Updates the name and URI of an existing token type
+    /// @dev Caller must have EDITOR_ROLE
+    /// @param typeId The identifier of the token type to update
+    /// @param typeName The new name for the token type
+    /// @param typeURI The new URI for the token type
     function updateType(uint256 typeId, string calldata typeName, string calldata typeURI) public onlyRole(EDITOR_ROLE) {
         _requireTypeExists(typeId);
         _typeName[typeId] = typeName;

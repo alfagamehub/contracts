@@ -32,6 +32,8 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
 
     uint256 private _randomCounter;
 
+    /// @notice Initializes the ALFA Lootbox contract with predefined types and drop chances
+    /// @param keysAddress Address of the keys token contract used for drops
     constructor(address keysAddress) ERC721("ALFA Lootbox", "ALBOX") {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(EDITOR_ROLE, _msgSender());
@@ -42,7 +44,7 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         _addDrop(1, DropChance(keysAddress, 3,   5100));
         _addDrop(1, DropChance(keysAddress, 4,    800));
         _addDrop(1, DropChance(keysAddress, 5,    100));
-        
+
         _addType("Rare", "https://api.alfagame.xyz/static/boxes/blue.mp4");
         _addDrop(2, DropChance(keysAddress, 1, 230000));
         _addDrop(2, DropChance(keysAddress, 2, 740000));
@@ -56,7 +58,7 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         _addDrop(3, DropChance(keysAddress, 3, 716500));
         _addDrop(3, DropChance(keysAddress, 4,  20000));
         _addDrop(3, DropChance(keysAddress, 5,   3500));
-        
+
         _addType("Legendary", "https://api.alfagame.xyz/static/boxes/red.mp4");
         _addDrop(4, DropChance(keysAddress, 1,   1000));
         _addDrop(4, DropChance(keysAddress, 2,  10000));
@@ -75,7 +77,8 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
 
     /// Read methods
 
-    /// @notice Returns types list;
+    /// @notice Returns the list of all token types with their metadata and drop chances
+    /// @return Array of TokenType structs representing all available types
     function getTypes() public view returns (TokenType[] memory) {
         uint256 length = _types.length();
         TokenType[] memory list = new TokenType[](length);
@@ -89,12 +92,12 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         return list;
     }
 
-    /// @notice Returns holder tokens list paginated;
-    /// @param holder Holder address;
-    /// @param offset Offset from the beginning;
-    /// @param limit Return array length limit;
-    /// @return Array of objects;
-    /// @return count Total holder tokens count;
+    /// @notice Returns a paginated list of tokens owned by a holder
+    /// @param holder Address of the token holder
+    /// @param offset Index offset to start from
+    /// @param limit Maximum number of tokens to return
+    /// @return Array of HolderToken structs representing the tokens
+    /// @return Total number of tokens owned by the holder
     function getTokens(address holder, uint256 offset, uint256 limit) public view returns (HolderToken[] memory, uint256 count) {
         count = _holderTokens[holder].length();
         if (offset >= count || limit == 0) return (new HolderToken[](0), count);
@@ -108,17 +111,17 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         return (data, count);
     }
 
-    /// @notice Returns token image URI;
-    /// @param tokenId Token identificator;
-    /// @return URI
+    /// @notice Returns the metadata URI of a given token
+    /// @param tokenId Identifier of the token
+    /// @return URI string of the token's metadata
     function tokenURI(uint256 tokenId) public view override(ERC721, IERC721Metadata) returns (string memory) {
         _requireOwned(tokenId);
         return _typeURI[tokenTypeId(tokenId)];
     }
 
-    /// @notice Returns token type data;
-    /// @param tokenId Token identificator;
-    /// @return data Object of token type;
+    /// @notice Returns the TokenType struct for a given token
+    /// @param tokenId Identifier of the token
+    /// @return data TokenType struct containing type metadata and drop chances
     function tokenType(uint256 tokenId) public view returns (TokenType memory data) {
         uint256 typeId = tokenTypeId(tokenId);
 
@@ -128,32 +131,32 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         data.typeURI = _typeURI[typeId];
     }
 
-    /// @notice Returns token typeId;
-    /// @param tokenId Token identificator;
-    /// @return Type identificator;
+    /// @notice Returns the type identifier of a given token
+    /// @param tokenId Identifier of the token
+    /// @return Type identifier of the token
     function tokenTypeId(uint256 tokenId) public view returns (uint256) {
         _requireOwned(tokenId);
         return _tokenType[tokenId];
     }
 
-    /// @notice Returns total amount of specified type token;
-    /// @param typeId Type index;
-    /// @return Type tokens amount;
+    /// @notice Returns the total number of tokens of a specific type
+    /// @param typeId Identifier of the token type
+    /// @return Number of tokens of the specified type
     function getTypeAmount(uint256 typeId) public view returns (uint256) {
         return _typeCount[typeId];
     }
 
-    /// @notice Returns holder amount of specified type token;
-    /// @param holder Holder address;
-    /// @param typeId Type index;
-    /// @return Type tokens amount;
+    /// @notice Returns the number of tokens of a specific type owned by a holder
+    /// @param holder Address of the token holder
+    /// @param typeId Identifier of the token type
+    /// @return Number of tokens of the specified type owned by the holder
     function getTypeHolderAmount(address holder, uint256 typeId) public view returns (uint256) {
         return _holderAmounts[holder][typeId];
     }
 
-    /// @notice Returns holder amounts of tokens separated by token type
-    /// @param holder Holder address;
-    /// @return Array of amounts;
+    /// @notice Returns an array of token counts owned by a holder, separated by token type
+    /// @param holder Address of the token holder
+    /// @return Array of token counts indexed by token type
     function getHolderAmounts(address holder) public view returns (uint256[] memory) {
         uint256[] memory amounts = new uint256[](_types.length());
         for (uint256 i; i < _types.length(); i++) {
@@ -165,6 +168,8 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
 
     /// Write methods
 
+    /// @notice Opens a lootbox token, rolling for a drop and burning the lootbox
+    /// @param tokenId Identifier of the lootbox token to open
     function open(uint256 tokenId) public {
         address user = _requireOwned(tokenId);
         if (user != _msgSender()) {
@@ -176,6 +181,11 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
 
     /// External methods
 
+    /// @notice Mints a new lootbox token of a specific type to a receiver
+    /// @dev Only callable by accounts with MINTER_ROLE
+    /// @param receiver Address to receive the minted token
+    /// @param typeId Identifier of the token type to mint
+    /// @return newTokenId Identifier of the newly minted token
     function mint(address receiver, uint256 typeId) external onlyRole(MINTER_ROLE) returns (uint256 newTokenId) {
         _requireTypeExists(typeId);
         newTokenId = _tokenIndex++;
@@ -184,6 +194,10 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         emit TokenMinted(typeId, receiver, newTokenId, _typeCount[typeId]);
     }
 
+    /// @notice Burns a token owned by a holder
+    /// @dev Only callable by accounts with BURNER_ROLE
+    /// @param holder Address of the token holder
+    /// @param tokenId Identifier of the token to burn
     function burn(address holder, uint256 tokenId) external onlyRole(BURNER_ROLE) {
         address realOwner = _requireOwned(tokenId);
         if (holder != realOwner) {
@@ -193,6 +207,10 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         _burnToken(tokenId);
     }
 
+    /// @notice Opens a lootbox token on behalf of a holder, rolling for a drop and burning the lootbox
+    /// @dev Only callable by accounts with BURNER_ROLE
+    /// @param holder Address of the token holder
+    /// @param tokenId Identifier of the lootbox token to open
     function openFor(address holder, uint256 tokenId) external onlyRole(BURNER_ROLE) {
         address user = _requireOwned(tokenId);
         if (user != holder) {
@@ -201,6 +219,9 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         _open(tokenId);
     }
 
+    /// @notice Checks if the contract supports a given interface
+    /// @param interfaceId Interface identifier (ERC-165)
+    /// @return True if the interface is supported, false otherwise
     function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, ERC721, AccessControl) returns (bool) {
         return
             ERC721.supportsInterface(interfaceId)
@@ -210,10 +231,18 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
 
     /// Admin methods
 
+    /// @notice Adds a new token type with a name and URI
+    /// @dev Only callable by accounts with EDITOR_ROLE
+    /// @param typeName Name of the new token type
+    /// @param typeURI Metadata URI of the new token type
+    /// @return newTypeId Identifier of the newly added token type
     function addType(string calldata typeName, string calldata typeURI) public onlyRole(EDITOR_ROLE) returns (uint256 newTypeId) {
         return _addType(typeName, typeURI);
     }
 
+    /// @notice Removes a token type if it is not currently in use
+    /// @dev Only callable by accounts with EDITOR_ROLE
+    /// @param typeId Identifier of the token type to remove
     function removeType(uint256 typeId) public onlyRole(EDITOR_ROLE) {
         _requireTypeExists(typeId);
         require(_typeCount[typeId] == 0, "Type already in use");
@@ -223,10 +252,18 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         emit TypeRemoved(typeId);
     }
 
+    /// @notice Clears all drop chances associated with a token type
+    /// @dev Only callable by accounts with EDITOR_ROLE
+    /// @param typeId Identifier of the token type
     function clearDrop(uint256 typeId) public onlyRole(EDITOR_ROLE) {
         _clearDrop(typeId);
     }
 
+    /// @notice Updates the name and URI of an existing token type
+    /// @dev Only callable by accounts with EDITOR_ROLE
+    /// @param typeId Identifier of the token type to update
+    /// @param typeName New name for the token type
+    /// @param typeURI New metadata URI for the token type
     function updateType(uint256 typeId, string calldata typeName, string calldata typeURI) public onlyRole(EDITOR_ROLE) {
         _requireTypeExists(typeId);
         _typeName[typeId] = typeName;
