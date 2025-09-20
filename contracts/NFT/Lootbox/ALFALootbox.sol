@@ -97,7 +97,7 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
     /// @param offset Index offset to start from
     /// @param limit Maximum number of tokens to return
     /// @return Array of HolderToken structs representing the tokens
-    /// @return Total number of tokens owned by the holder
+    /// @return count Total number of tokens owned by the holder
     function getTokens(address holder, uint256 offset, uint256 limit) public view returns (HolderToken[] memory, uint256 count) {
         count = _holderTokens[holder].length();
         if (offset >= count || limit == 0) return (new HolderToken[](0), count);

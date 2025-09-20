@@ -10,6 +10,9 @@ interface IALFAReferral is IALFAReferralPercents {
     event PercentsSet(uint256[] percents);
     
     function addRelation(address parentAddress, address childAddress) external;
+    function setSequence(address[] calldata sequence) external;
+
+    function getPercents() external view returns (uint256[] memory);
 
     function getParent(address childAddress) external view returns (address);
     function getChildrenCount(address parentAddress) external view returns (uint256);

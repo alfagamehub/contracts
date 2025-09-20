@@ -24,6 +24,10 @@ contract ALFAReferral is AccessControl, IALFAReferral {
         _grantRole(CONNECTOR_ROLE, _msgSender());
     }
 
+    function getPercents() external view returns (uint256[] memory) {
+        return _percents;
+    }
+
     /// @notice Returns the referral percent structure for a given child address.
     /// @dev Traverses up the referral tree from the child, returning each parent and their percent.
     /// @param childAddress The address of the child whose referral percents are being queried.
@@ -81,10 +85,21 @@ contract ALFAReferral is AccessControl, IALFAReferral {
     /// @param parentAddress The address to be set as the parent.
     /// @param childAddress The address to be set as the child.
     function addRelation(address parentAddress, address childAddress) public onlyRole(CONNECTOR_ROLE) {
-        _removeRelation(childAddress);
-        _parents[childAddress] = parentAddress;
-        _children[parentAddress].add(childAddress);
-        emit RelationAdded(parentAddress, childAddress);
+        _addRelation(parentAddress, childAddress);
+    }
+
+    function setSequence(address[] calldata sequence) public onlyRole(CONNECTOR_ROLE) {
+        require(sequence.length >= 1, "Referral sequence is to short");
+        require(sequence.length <= _percents.length + 1, "Referral sequence is too long");
+        uint256 i;
+        address parent = getParent(sequence[i]);
+        while (i < sequence.length - 1
+            && parent == address(0)
+            && sequence[i + 1] != sequence[i]
+        ) {
+            _addRelation(sequence[i + 1], sequence[i]);
+            parent = getParent(sequence[++i]);
+        }
     }
 
     /// @notice Sets the referral percents for each referral level.
@@ -94,6 +109,13 @@ contract ALFAReferral is AccessControl, IALFAReferral {
     function setPercents(uint256[] calldata percents) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _percents = percents;
         emit PercentsSet(percents);
+    }
+
+    function _addRelation(address parentAddress, address childAddress) internal {
+        _removeRelation(childAddress);
+        _parents[childAddress] = parentAddress;
+        _children[parentAddress].add(childAddress);
+        emit RelationAdded(parentAddress, childAddress);
     }
 
     function _removeRelation(address childAddress) internal {

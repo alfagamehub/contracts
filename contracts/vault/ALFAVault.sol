@@ -45,6 +45,8 @@ contract ALFAVault is AccessControl, IALFAVault {
         emit RedeemUntilDateSet(redeemUntilDateSeconds);
     }
 
+    receive() external payable {}
+
 
     /// Write methods
 
@@ -60,7 +62,12 @@ contract ALFAVault is AccessControl, IALFAVault {
         uint256 total = _getKeysTotalAmount();
         for (uint256 i; i < _tokens.length(); i++) {
             uint256 amount = _getBalance(_tokens.at(i)) / total;
-            require(IERC20(_tokens.at(i)).transfer(holder, amount), "Can't transfer reward");
+            if (_tokens.at(i) == address(0)) {
+                (bool sent,) = holder.call{value: amount}("");
+                require(sent, "Failed to send BNB");
+            } else {
+                require(IERC20(_tokens.at(i)).transfer(holder, amount), "Can't transfer reward");
+            }
             emit RewardRedeemed(holder, _tokens.at(i), amount, tokenId);
         }
         _keys.burn(holder, tokenId);
@@ -112,6 +119,14 @@ contract ALFAVault is AccessControl, IALFAVault {
         uint256 redeemUntilDateSeconds
     ) {
         return (getVaultTokens(), _getKeysTotalAmount(), unlockDate, redeemUntilDate);
+    }
+
+    /// @notice Checks if a given token is currently allowed in the vault.
+    /// @dev Returns true if the token address exists in the allowed tokens set.
+    /// @param tokenAddress The address of the ERC20 token to check.
+    /// @return True if the token is available in the vault, false otherwise.
+    function getTokenAvailable(address tokenAddress) public view returns (bool) {
+        return _tokens.contains(tokenAddress);
     }
 
 
@@ -211,10 +226,15 @@ contract ALFAVault is AccessControl, IALFAVault {
     }
 
     function _withdraw(address tokenAddress, uint256 amount) internal {
-        if (_tokens.containstokenAddress)) {
+        if (_tokens.contains(tokenAddress)) {
             require(block.timestamp > redeemUntilDate, "Holders still can redeem their reward");
         }
-        require(IERC20(tokenAddress).transfer(_msgSender(), amount), "Can't transfer reward");
+        if (tokenAddress == address(0)) {
+            (bool sent,) = _msgSender().call{value: amount}("");
+            require(sent, "Failed to send BNB");
+        } else {
+            require(IERC20(tokenAddress).transfer(_msgSender(), amount), "Can't transfer reward");
+        }
         emit RewardWithdrawn(tokenAddress, amount, _msgSender());
     }
 
