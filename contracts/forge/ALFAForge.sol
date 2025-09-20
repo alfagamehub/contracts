@@ -11,6 +11,9 @@ import {IALFAReferral, ReferralPercents} from "../referral/interfaces/IALFARefer
 import {IPancakeRouter} from "../store/interfaces/IPancakeRouter.sol";
 import {PERCENT_PRECISION} from "../const.sol";
 
+/// @title ALFA Forge
+/// @notice Upgrades ALFA Key NFTs by burning the source key and minting a new key according to configured drop chances.
+/// @dev Accepts payments in ERC20 tokens or native BNB, quotes prices from USDT via PancakeSwap V2, and distributes proceeds among referrals, team, and burn account.
 contract ALFAForge is AccessControl, IALFAForge {
 
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -38,6 +41,12 @@ contract ALFAForge is AccessControl, IALFAForge {
     address public burnAccount;
     uint256 public burnShare = 800_000;
 
+    /// @notice Initializes the forge with key, burn, referral, and vault contracts; sets initial upgrade prices and drop tables.
+    /// @dev Deployer receives DEFAULT_ADMIN_ROLE and EDITOR_ROLE; `teamAccount` is initially the deployer.
+    /// @param keyAddress Address of the ALFA Key contract.
+    /// @param burnAccountAddress Address that receives the burn share of proceeds.
+    /// @param referralAddress Address of the referral contract used for payout distribution.
+    /// @param vaultAddress Address of the vault contract (used for sale schedule checks, e.g., unlock date).
     constructor(
         address keyAddress,
         address burnAccountAddress,
@@ -82,8 +91,8 @@ contract ALFAForge is AccessControl, IALFAForge {
         _addDrop(4, UpgradeChance(5, 200000));
     }
 
-    /// @notice Accepts native BNB transfers. Tries to forward funds to the vault; if forwarding fails, funds remain here.
-    /// @dev Forwarding may fail if the vault has no payable receive/fallback. We intentionally do not revert to avoid breaking user transfers.
+    /// @notice Accepts native BNB transfers. Attempts to forward funds to the team account; if forwarding fails, funds remain in the contract.
+    /// @dev We deliberately do not revert here to avoid breaking blind transfers. Use explicit functions for accounting-sensitive deposits.
     receive() external payable {
         (bool sent,) = address(teamAccount).call{value: msg.value}("");
         // If the vault has no payable receive/fallback, keep funds in the store to avoid reverting user transfers.
@@ -95,10 +104,10 @@ contract ALFAForge is AccessControl, IALFAForge {
 
     /// Read methods
 
-    /// @notice Returns a matrix of lootbox prices for all token types in all accepted tokens.
-    /// @dev Rows correspond to lootbox typeId, columns correspond to tokens returned by `vault.getVaultTokens()`.
-    ///      Each cell is the quoted amount of a token needed to pay the USDT-denominated price for that lootbox type.
-    /// @return upgradePrice A 2D array [typeId][priceIndex] with token address, typeId and amount.
+    /// @notice Returns a matrix of upgrade prices for each key type and each accepted payment token.
+    /// @dev Rows correspond to target upgrade typeId (1..N-1), columns correspond to tokens from the internal allowlist `_tokens`.
+    ///      Each cell contains the quoted token amount required to pay the USDT-denominated upgrade price for that type.
+    /// @return upgradePrice A 2D array [typeIdIndex][tokenIndex] with token address, typeId and amount.
     function getPrices() public view returns (UpgradePrice[][] memory) {
         UpgradePrice[][] memory upgradePrice = new UpgradePrice[][](key.getTypes().length - 1);
 
@@ -118,14 +127,23 @@ contract ALFAForge is AccessControl, IALFAForge {
         return upgradePrice;
     }
 
-    
+
     /// Write methods
 
+    /// @notice Upgrades a key by paying with an ERC20 token.
+    /// @dev Charges the quoted price, distributes proceeds, burns the original key, and mints a new key based on drop chances.
+    /// @param tokenId ID of the key to upgrade (must be owned by caller).
+    /// @param tokenAddress ERC20 token used for payment (must be in the allowlist).
+    /// @return newItemId ID of the newly minted key if upgrade hits a non-zero type; otherwise emits burn-only event.
     function upgrade(uint256 tokenId, address tokenAddress) public returns (uint256 newItemId) {
         _pay(tokenId, tokenAddress);
         newItemId = _upgrade(tokenId);
     }
 
+    /// @notice Upgrades a key by paying with native BNB.
+    /// @dev Quotes USDT price to BNB, distributes proceeds, burns the original key, mints new key per drop table, and refunds excess BNB.
+    /// @param tokenId ID of the key to upgrade (must be owned by caller).
+    /// @return newItemId ID of the newly minted key if upgrade hits a non-zero type; otherwise emits burn-only event.
     function upgrade(uint256 tokenId) public payable returns (uint256 newItemId) {
         _pay(tokenId, address(0));
         newItemId = _upgrade(tokenId);
@@ -134,15 +152,15 @@ contract ALFAForge is AccessControl, IALFAForge {
 
     /// Admin methods
 
-    /// @notice Sets USDT-denominated prices per lootbox type.
-    /// @dev Only callable by DEFAULT_ADMIN_ROLE. Emits `PriceSet` for each typeId.
+    /// @notice Sets USDT-denominated upgrade prices per key type.
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE. Emits `PriceSet` for each typeId (starting from 1).
     /// @param prices Array of prices in USDT (raw units), indexed by typeId.
     function setPrices(uint256[] memory prices) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _setPrices(prices);
     }
 
-    /// @notice Sets the store's burn share percentage (scaled by PERCENT_PRECISION).
-    /// @dev Must be &lt;= 100% (PERCENT_PRECISION). The remainder after referrals and vault share is paid to the team.
+    /// @notice Sets the burn share percentage (scaled by PERCENT_PRECISION).
+    /// @dev Must be &lt;= 100% (PERCENT_PRECISION). The remainder after referrals and the burn share is paid to the team.
     /// @param sharePercents New burn share in PERCENT_PRECISION units.
     function setBurnShare(uint256 sharePercents) public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(sharePercents <= PERCENT_PRECISION, "Share exceeds 100%");
@@ -166,6 +184,10 @@ contract ALFAForge is AccessControl, IALFAForge {
         emit TeamAccountSet(accountAddress);
     }
 
+    /// @notice Sets a discount percentage for a specific payment token.
+    /// @dev Discount is applied as `price -= price * discount / PERCENT_PRECISION`. Use 0 for no discount.
+    /// @param tokenAddress Payment token to discount (use address(0) for native BNB).
+    /// @param discountPercents Discount in PERCENT_PRECISION units.
     function setTokenDiscount(address tokenAddress, uint256 discountPercents) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _discount[tokenAddress] = discountPercents;
         emit TokenDiscountSet(tokenAddress, discountPercents);
@@ -174,13 +196,18 @@ contract ALFAForge is AccessControl, IALFAForge {
 
     /// Internal methods
 
-    /// @notice Reverts if a non-native payment token is not allowed by the vault.
-    /// @dev Native payments use `address(0)`. ERC20 tokens must be enabled in the vault.
+    /// @notice Reverts if the payment token is not in the Forge allowlist.
+    /// @dev Native payments use `address(0)`. ERC20 tokens must be present in `_tokens`.
     /// @param tokenAddress Address of the payment token (use address(0) for BNB).
     function _requireTokenAvailable(address tokenAddress) internal view {
         require(_tokens.contains(tokenAddress), "Token is not allowed");
     }
 
+    /// @notice Appends a drop chance entry for a given upgrade type.
+    /// @dev `drop.typeId` is the resulting type; `drop.chance` is in PERCENT_PRECISION. Returns the new entry index (1-based).
+    /// @param typeId Source key type to configure.
+    /// @param drop UpgradeChance structure to append.
+    /// @return newDropId Index of the newly added drop entry for `typeId` (1-based).
     function _addDrop(uint256 typeId, UpgradeChance memory drop) internal returns (uint256 newDropId) {
         _typeDrop[typeId].push(drop);
         newDropId = _typeDrop[typeId].length;
@@ -188,11 +215,19 @@ contract ALFAForge is AccessControl, IALFAForge {
         return newDropId;
     }
 
+    /// @notice Pseudo-random generator for testing/low-stakes selection.
+    /// @dev Uses block.prevrandao, timestamp, and an incrementing counter; not suitable for adversarial settings.
+    /// @param mod Modulo for the returned value.
+    /// @return Random value in [0, mod).
     function _pseudoRandom(uint256 mod) internal returns (uint256) {
         return uint256(keccak256(abi.encodePacked(block.prevrandao, block.timestamp, ++_randomCounter)))
             % mod;
     }
 
+    /// @notice Rolls the drop table for a given type and returns the resulting rarity index.
+    /// @dev Aggregates from the end of the array assuming ascending rarity; returns 0 if no threshold matched.
+    /// @param typeId Source key type.
+    /// @return Index of the selected rarity in the `_typeDrop[typeId]` array.
     function _rollDrop(uint256 typeId) internal returns (uint256) {
         uint rand = _pseudoRandom(PERCENT_PRECISION);
         uint chance;
@@ -207,6 +242,10 @@ contract ALFAForge is AccessControl, IALFAForge {
         return 0;
     }
 
+    /// @notice Burns the original key and mints a new key according to the rolled drop.
+    /// @dev Emits `KeyUpgraded` when a new key is minted; otherwise emits `KeyBurned`.
+    /// @param tokenId ID of the key being upgraded (already validated/paid by caller).
+    /// @return nftItemId New key ID if minted, otherwise 0.
     function _upgrade(uint256 tokenId) internal returns (uint256 nftItemId) {
         address holder = _msgSender();
         key.burn(holder, tokenId);
@@ -290,13 +329,13 @@ contract ALFAForge is AccessControl, IALFAForge {
         }
     }
 
-    /// @notice Distributes a payment across referral parents, team, and vault according to configured percentages.
-    /// @dev Returns the remaining share after paying referrals and team, which is then sent to the vault.
+    /// @notice Distributes a payment across referral parents, team, and burn account according to configured percentages.
+    /// @dev Returns the remaining share after paying referrals and team, which is then sent to the burn account.
     /// @param holder Buyer address used as the base of the referral chain.
     /// @param refs Referral distribution data (ordered from closest parent).
     /// @param tokenAddress Payment token (address(0) for BNB).
     /// @param amount Total payment amount to distribute (raw units).
-    /// @return percentsLeft Remaining percentage (in PERCENT_PRECISION) after referral payouts, capped to `vaultShare`.
+    /// @return percentsLeft Remaining percentage (in PERCENT_PRECISION) after referral payouts, capped to `burnShare`.
     function _distributePayment(address holder, ReferralPercents[] memory refs, address tokenAddress, uint256 amount) internal returns (uint256 percentsLeft) {
         percentsLeft = PERCENT_PRECISION;
         /// Current step refer;
@@ -335,6 +374,11 @@ contract ALFAForge is AccessControl, IALFAForge {
         emit BurnAccountRefilled(holder, tokenAddress, burnShareAmount);
     }
 
+    /// @notice Validates ownership and availability, computes the price (including discounts), and collects payment.
+    /// @dev Dispatches to native or ERC20 branch; on native, refunds excess to caller (or forwards to vault if refund fails).
+    /// @param tokenId Key ID to upgrade.
+    /// @param tokenAddress Payment token (address(0) for BNB).
+    /// @return price Final charged amount in the payment token's raw units.
     function _pay(uint256 tokenId, address tokenAddress) internal returns (uint256 price) {
         uint256 typeId = key.tokenTypeId(tokenId);
         address holder = _msgSender();
