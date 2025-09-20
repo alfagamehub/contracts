@@ -248,9 +248,9 @@ contract ALFAForge is AccessControl, IALFAForge {
     /// @return nftItemId New key ID if minted, otherwise 0.
     function _upgrade(uint256 tokenId) internal returns (uint256 nftItemId) {
         address holder = _msgSender();
+        uint256 typeId = key.tokenTypeId(tokenId);
         key.burn(holder, tokenId);
 
-        uint256 typeId = key.tokenTypeId(tokenId);
         uint256 rarity = _rollDrop(typeId);
         UpgradeChance storage drop = _typeDrop[typeId][rarity];
 
