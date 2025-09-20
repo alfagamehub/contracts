@@ -63,7 +63,7 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
     /// @param offset The starting index from which to return tokens
     /// @param limit The maximum number of tokens to return
     /// @return An array of HolderToken structs representing the holder's tokens in the specified range
-    /// @return The total count of tokens owned by the holder
+    /// @return count The total count of tokens owned by the holder
     function getTokens(address holder, uint256 offset, uint256 limit) public view returns (HolderToken[] memory, uint256 count) {
         count = _holderTokens[holder].length();
         if (offset >= count || limit == 0) return (new HolderToken[](0), count);

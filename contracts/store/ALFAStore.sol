@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AccessControl, IAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IALFAStore, NotEnoughTokens} from "./interfaces/IALFAStore.sol";
+import {IALFAStore, LootBoxPrice, NotEnoughTokens} from "./interfaces/IALFAStore.sol";
 import {IALFAVault, TokenInfo} from "../vault/interfaces/IALFAVault.sol";
 import {IALFALootbox, TokenType} from "../NFT/Lootbox/IALFALootbox.sol";
 import {IALFAReferral, ReferralPercents} from "../referral/interfaces/IALFAReferral.sol";
@@ -51,12 +51,13 @@ contract ALFAStore is AccessControl, IALFAStore {
         if (prices.length > 0) {
             _setPrices(prices);
         } else {
-            uint256[] memory initialPrices = new uint256[](5);
-            initialPrices[0] = 1e18;
-            initialPrices[1] = 10 * 1e18;
-            initialPrices[2] = 100 * 1e18;
-            initialPrices[3] = 1_000 * 1e18;
-            initialPrices[4] = 10_000 * 1e18;
+            uint256[] memory initialPrices = new uint256[](6);
+            initialPrices[0] = 0;
+            initialPrices[1] = 1e18;
+            initialPrices[2] = 10 * 1e18;
+            initialPrices[3] = 100 * 1e18;
+            initialPrices[4] = 1_000 * 1e18;
+            initialPrices[5] = 10_000 * 1e18;
             _setPrices(initialPrices);
         }
     }
@@ -72,18 +73,21 @@ contract ALFAStore is AccessControl, IALFAStore {
     }
 
 
+    /// Read methods
+
     /// @notice Returns a matrix of lootbox prices for all token types in all accepted tokens.
     /// @dev Rows correspond to lootbox typeId, columns correspond to tokens returned by `vault.getVaultTokens()`.
     ///      Each cell is the quoted amount of a token needed to pay the USDT-denominated price for that lootbox type.
-    /// @return lootBoxPrice A 2D array [typeId][tokenIndex] with token address and amount.
-    function getPrices() public view returns (TokenInfo[][] memory) {
+    /// @return lootBoxPrice A 2D array [typeId][tokenIndex] with token address, typeId and amount.
+    function getPrices() public view returns (LootBoxPrice[][] memory) {
         TokenInfo[] memory tokens = vault.getVaultTokens();
-        TokenInfo[][] memory lootBoxPrice = new TokenInfo[][](lootBox.getTypes().length);
+        LootBoxPrice[][] memory lootBoxPrice = new LootBoxPrice[][](lootBox.getTypes().length);
 
         for (uint256 i; i < lootBoxPrice.length; i++) {
-            lootBoxPrice[i] = new TokenInfo[](tokens.length);
+            lootBoxPrice[i] = new LootBoxPrice[](tokens.length);
 
             for (uint256 t; t < tokens.length; t++) {
+                lootBoxPrice[i][t].typeId = i + 1;
                 lootBoxPrice[i][t].tokenAddress = tokens[t].tokenAddress;
                 if (tokens[t].tokenAddress == address(0)) {
                     lootBoxPrice[i][t].amount = _quoteBNBForUSDT(_prices[i]);
@@ -95,6 +99,8 @@ contract ALFAStore is AccessControl, IALFAStore {
         return lootBoxPrice;
     }
 
+
+    /// Write methods
 
     /// @notice Buys lootboxes with an ERC20 token and optional referral parents chain.
     /// @dev Uses PancakeSwap quotes from USDT to `tokenAddress`. Performs referral/ team/ vault distribution via `_distributePayment`.
@@ -118,6 +124,9 @@ contract ALFAStore is AccessControl, IALFAStore {
         _updateReferralSequence(parents);
         return _buy(typeId, address(0), boxAmount);
     }
+
+
+    /// Admin methods
 
 
     /// @notice Sets USDT-denominated prices per lootbox type.
@@ -145,6 +154,8 @@ contract ALFAStore is AccessControl, IALFAStore {
     }
 
 
+    /// Internal methods
+
     /// @notice Reverts if a non-native payment token is not allowed by the vault.
     /// @dev Native payments use `address(0)`. ERC20 tokens must be enabled in the vault.
     /// @param tokenAddress Address of the payment token (use address(0) for BNB).
@@ -155,7 +166,7 @@ contract ALFAStore is AccessControl, IALFAStore {
     /// @notice Internal helper to set USDT-denominated prices per typeId and emit events.
     /// @param prices Array of prices in USDT (raw units), indexed by typeId.
     function _setPrices(uint256[] memory prices) internal {
-        for (uint256 i; i < prices.length; i++) {
+        for (uint256 i = 1; i < prices.length; i++) {
             _prices[i] = prices[i];
             emit PriceSet(i, prices[i]);
         }
@@ -287,7 +298,7 @@ contract ALFAStore is AccessControl, IALFAStore {
     function _buy(uint256 typeId, address tokenAddress, uint256 boxAmount) internal returns (uint256[] memory tokenId) {
         require(boxAmount > 0, "Can't sell 0 boxes");
         require(block.timestamp < vault.unlockDate(), "Sale is not available");
-        require(typeId < lootBox.getTypes().length, "NFT type is not available");
+        require(typeId <= lootBox.getTypes().length, "NFT type is not available");
         require(_prices[typeId] > 0, "NFT type in not on sale");
         _requireTokenAvailable(tokenAddress);
         

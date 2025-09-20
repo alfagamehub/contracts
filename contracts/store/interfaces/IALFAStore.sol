@@ -3,6 +3,12 @@ pragma solidity ^0.8.24;
 
 import {IALFAVault, TokenInfo} from "../../vault/interfaces/IALFAVault.sol";
 
+struct LootBoxPrice {
+    uint256 typeId;
+    address tokenAddress;
+    uint256 amount;
+}
+
 error NotEnoughTokens(uint256 required, uint256 received);
 
 interface IALFAStore {
@@ -27,7 +33,7 @@ interface IALFAStore {
     /// @dev Rows correspond to lootbox typeId, columns correspond to tokens returned by `vault.getVaultTokens()`.
     ///      Each cell is the quoted amount of a token needed to pay the USDT-denominated price for that lootbox type.
     /// @return lootBoxPrice A 2D array [typeId][tokenIndex] with token address and amount.
-    function getPrices() external view returns (TokenInfo[][] memory lootBoxPrice);
+    function getPrices() external view returns (LootBoxPrice[][] memory lootBoxPrice);
 
     // -------- Write methods --------
 
