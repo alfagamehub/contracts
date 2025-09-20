@@ -16,6 +16,7 @@ struct UpgradePrice {
 }
 
 error NotEnoughTokens(uint256 required, uint256 received);
+error NotEnoughAllowance(uint256 required, uint256 received);
 
 interface IALFAForge {
 

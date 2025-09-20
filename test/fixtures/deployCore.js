@@ -20,13 +20,15 @@ async function deployCore(deployerAddress, secondAddress) {
     await setCodeAt("0x55d398326f99059fF775485246999027B3197955", "MockUSDT");
     await setCodeAt("0x1000000000000000000000000000000000000001", "MockERC20");
     
+    const MockPancakeRouter = await ethers.getContractAt("MockPancakeRouter", "0x10ED43C718714eb63d5aA57B78B54704E256024E");
+    
     // Initialize mocks (constructor-less) — idempotent guards to avoid "Already initialized"
     // USDT
+    const MockUSDT = await ethers.getContractAt("MockUSDT", "0x55d398326f99059fF775485246999027B3197955");
     {
-      const mockUSDT = await ethers.getContractAt("MockUSDT", "0x55d398326f99059fF775485246999027B3197955");
       let needInit = false;
       try {
-        const dec = await mockUSDT.decimals();
+        const dec = await MockUSDT.decimals();
         // If decimals is 0 (default), we consider not initialized
         needInit = (Number(dec) === 0);
       } catch (_) {
@@ -34,50 +36,50 @@ async function deployCore(deployerAddress, secondAddress) {
         needInit = true;
       }
       if (needInit) {
-        if (typeof mockUSDT.initialize === "function") {
-          await (await mockUSDT.initialize(18)).wait();
-        } else if (mockUSDT.interface.functions["initialize(uint8)"]) {
-          await (await mockUSDT["initialize(uint8)"](18)).wait();
+        if (typeof MockUSDT.initialize === "function") {
+          await (await MockUSDT.initialize(18)).wait();
+        } else if (MockUSDT.interface.functions["initialize(uint8)"]) {
+          await (await MockUSDT["initialize(uint8)"](18)).wait();
         } else {
           console.warn("[deployCore] MockUSDT.initialize not found in ABI — skipping");
         }
       }
     }
     // WBNB
+    const MockWBNB = await ethers.getContractAt("MockWBNB", "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c");
     {
-      const mockWBNB = await ethers.getContractAt("MockWBNB", "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c");
       let needInit = false;
       try {
-        const nm = await mockWBNB.name();
+        const nm = await MockWBNB.name();
         needInit = (typeof nm !== "string" || nm.length === 0);
       } catch (_) {
         needInit = true;
       }
       if (needInit) {
-        if (typeof mockWBNB.initialize === "function") {
-          await (await mockWBNB.initialize()).wait();
-        } else if (mockWBNB.interface.functions["initialize()"]) {
-          await (await mockWBNB["initialize()"]()).wait();
+        if (typeof MockWBNB.initialize === "function") {
+          await (await MockWBNB.initialize()).wait();
+        } else if (MockWBNB.interface.functions["initialize()"]) {
+          await (await MockWBNB["initialize()"]()).wait();
         } else {
           console.warn("[deployCore] MockWBNB.initialize not found in ABI — skipping");
         }
       }
     }
     // ALFA test token (MockERC20)
+    const MockERC20 = await ethers.getContractAt("MockERC20", "0x1000000000000000000000000000000000000001");
     {
-      const mockERC20 = await ethers.getContractAt("MockERC20", "0x1000000000000000000000000000000000000001");
       let needInit = false;
       try {
-        const nm = await mockERC20.name();
+        const nm = await MockERC20.name();
         needInit = (typeof nm !== "string" || nm.length === 0);
       } catch (_) {
         needInit = true;
       }
       if (needInit) {
-        if (typeof mockERC20.initialize === "function") {
-          await (await mockERC20.initialize("ALFA Game", "ALFA", 18)).wait();
-        } else if (mockERC20.interface.functions["initialize(string,string,uint8)"]) {
-          await (await mockERC20["initialize(string,string,uint8)"]("ALFA Game", "ALFA", 18)).wait();
+        if (typeof MockERC20.initialize === "function") {
+          await (await MockERC20.initialize("ALFA Game", "ALFA", 18)).wait();
+        } else if (MockERC20.interface.functions["initialize(string,string,uint8)"]) {
+          await (await MockERC20["initialize(string,string,uint8)"]("ALFA Game", "ALFA", 18)).wait();
         } else {
           console.warn("[deployCore] MockERC20.initialize not found in ABI — skipping");
         }
@@ -94,7 +96,7 @@ async function deployCore(deployerAddress, secondAddress) {
         'ALFAKey',
         [
           ZERO_ADDRESS,
-          '0x55d398326f99059fF775485246999027B3197955',
+          MockUSDT.address,
         ],
         Math.floor(Date.now() / 1000) + DAY,
         Math.floor(Date.now() / 1000) + DAY * 2,
@@ -152,6 +154,27 @@ async function deployCore(deployerAddress, secondAddress) {
       await contract.ALFALootbox.MINTER_ROLE(),
       contract.ALFAStore.address,
     )
+    
+    await contract.ALFAReferral.grantRole(
+      await contract.ALFAReferral.CONNECTOR_ROLE(),
+      contract.ALFAStore.address,
+    )
+    await contract.ALFAReferral.grantRole(
+      await contract.ALFAReferral.CONNECTOR_ROLE(),
+      contract.ALFAForge.address,
+    )
+    
+    await MockPancakeRouter.setRate(MockUSDT.address, MockWBNB.address, 3, 1000);     // USDT->WBNB
+    await MockPancakeRouter.setRate(MockWBNB.address, MockUSDT.address, 1000, 3);     // WBNB->USDT
+    await MockPancakeRouter.setRate(MockWBNB.address, MockERC20.address, 100, 1);     // WBNB->TOKEN
+    await MockPancakeRouter.setRate(MockUSDT.address, MockERC20.address, 2, 1);       // USDT->TOKEN
+    
+    Object.assign(contract, {
+      MockUSDT,
+      MockWBNB,
+      MockERC20,
+      MockPancakeRouter,
+    }) 
     
     return contract;
   } catch (error) {

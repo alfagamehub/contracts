@@ -214,7 +214,9 @@ contract ALFAVault is AccessControl, IALFAVault {
     }
     
     function _getBalance(address tokenAddress) internal view returns (uint256) {
-        return IERC20(tokenAddress).balanceOf(address(this));
+        return tokenAddress == address(0)
+            ? address(this).balance
+            : IERC20(tokenAddress).balanceOf(address(this));
     }
 
     function _getKeysTotalAmount() internal view returns (uint256) {

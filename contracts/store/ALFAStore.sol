@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AccessControl, IAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IALFAStore, LootBoxPrice, NotEnoughTokens} from "./interfaces/IALFAStore.sol";
+import {IALFAStore, LootBoxPrice, NotEnoughTokens, NotEnoughAllowance} from "./interfaces/IALFAStore.sol";
 import {IALFAVault, TokenInfo} from "../vault/interfaces/IALFAVault.sol";
 import {IALFALootbox, TokenType} from "../NFT/Lootbox/IALFALootbox.sol";
 import {IALFAReferral, ReferralPercents} from "../referral/interfaces/IALFAReferral.sol";
@@ -90,9 +90,9 @@ contract ALFAStore is AccessControl, IALFAStore {
                 lootBoxPrice[i][t].typeId = i + 1;
                 lootBoxPrice[i][t].tokenAddress = tokens[t].tokenAddress;
                 if (tokens[t].tokenAddress == address(0)) {
-                    lootBoxPrice[i][t].amount = _quoteBNBForUSDT(_prices[i]);
+                    lootBoxPrice[i][t].amount = _quoteBNBForUSDT(_prices[i + 1]);
                 } else {
-                    lootBoxPrice[i][t].amount = _quoteTokenForUSDT(tokens[t].tokenAddress, _prices[i]);
+                    lootBoxPrice[i][t].amount = _quoteTokenForUSDT(tokens[t].tokenAddress, _prices[i + 1]);
                 }
             }
         }
@@ -333,7 +333,7 @@ contract ALFAStore is AccessControl, IALFAStore {
             if (balance < price) {
                 revert NotEnoughTokens(price, balance);
             } else if (allowance < price) {
-                revert NotEnoughTokens(price, allowance);
+                revert NotEnoughAllowance(price, allowance);
             }
             /// Distribute payment
             _distributePayment(holder, refs, tokenAddress, price);

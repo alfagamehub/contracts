@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AccessControl, IAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {IALFAForge, UpgradeChance, UpgradePrice, NotEnoughTokens} from "./IALFAForge.sol";
+import {IALFAForge, UpgradeChance, UpgradePrice, NotEnoughTokens, NotEnoughAllowance} from "./IALFAForge.sol";
 import {IALFAKey} from "../NFT/Key/IALFAKey.sol";
 import {IALFAVault} from "../vault/interfaces/IALFAVault.sol";
 import {IALFAReferral, ReferralPercents} from "../referral/interfaces/IALFAReferral.sol";
@@ -417,7 +417,7 @@ contract ALFAForge is AccessControl, IALFAForge {
             if (balance < price) {
                 revert NotEnoughTokens(price, balance);
             } else if (allowance < price) {
-                revert NotEnoughTokens(price, allowance);
+                revert NotEnoughAllowance(price, allowance);
             }
             /// Distribute payment
             _distributePayment(holder, refs, tokenAddress, price);
