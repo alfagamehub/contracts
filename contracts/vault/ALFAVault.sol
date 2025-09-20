@@ -33,7 +33,7 @@ contract ALFAVault is AccessControl, IALFAVault {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
 
         _keys = IALFAKey(alfaKeyAddress);
-        _masterKeyTypeId = 4;
+        _masterKeyTypeId = 5;
         for (uint256 i; i < tokens.length; i++) {
             _addToken(tokens[i]);
         }
