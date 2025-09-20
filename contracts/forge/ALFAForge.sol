@@ -63,6 +63,8 @@ contract ALFAForge is AccessControl, IALFAForge {
         vault = IALFAVault(vaultAddress);
         _referral = IALFAReferral(referralAddress);
 
+        _addToken(address(0));
+
 
         uint256[] memory initialPrices = new uint256[](5);
         initialPrices[0] = 0;
@@ -118,13 +120,20 @@ contract ALFAForge is AccessControl, IALFAForge {
                 upgradePrice[i][t].typeId = i + 1;
                 upgradePrice[i][t].tokenAddress = _tokens.at(t);
                 if (upgradePrice[i][t].tokenAddress == address(0)) {
-                    upgradePrice[i][t].amount = _quoteBNBForUSDT(_prices[i]);
+                    upgradePrice[i][t].amount = _quoteBNBForUSDT(_prices[i + 1]);
                 } else {
-                    upgradePrice[i][t].amount = _quoteTokenForUSDT(upgradePrice[i][t].tokenAddress, _prices[i]);
+                    upgradePrice[i][t].amount = _quoteTokenForUSDT(upgradePrice[i][t].tokenAddress, _prices[i + 1]);
                 }
             }
         }
         return upgradePrice;
+    }
+
+    /// @notice Checks whether a payment token is currently allowed for upgrades.
+    /// @param tokenAddress Address of the payment token (use address(0) for BNB).
+    /// @return True if the token is enabled, false otherwise.
+    function getTokenAvailable(address tokenAddress) public view returns (bool) {
+        return _tokens.contains(tokenAddress);
     }
 
 
@@ -184,6 +193,21 @@ contract ALFAForge is AccessControl, IALFAForge {
         emit TeamAccountSet(accountAddress);
     }
 
+    /// @notice Adds a payment token to the allowlist.
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE. Reverts if the token is already allowed.
+    /// @param tokenAddress Address of the token to add (use address(0) for native BNB).
+    /// @return newIndex Index of the token inside the allowlist.
+    function addToken(address tokenAddress) public onlyRole(DEFAULT_ADMIN_ROLE) returns (uint256 newIndex) {
+        return _addToken(tokenAddress);
+    }
+
+    /// @notice Removes a payment token from the allowlist.
+    /// @dev Only callable by DEFAULT_ADMIN_ROLE. Reverts if the token is not currently allowed.
+    /// @param tokenAddress Address of the token to remove (use address(0) for native BNB).
+    function removeToken(address tokenAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _removeToken(tokenAddress);
+    }
+
     /// @notice Sets a discount percentage for a specific payment token.
     /// @dev Discount is applied as `price -= price * discount / PERCENT_PRECISION`. Use 0 for no discount.
     /// @param tokenAddress Payment token to discount (use address(0) for native BNB).
@@ -213,6 +237,26 @@ contract ALFAForge is AccessControl, IALFAForge {
         newDropId = _typeDrop[typeId].length;
         emit TypeDropAdded(typeId, newDropId, drop);
         return newDropId;
+    }
+
+    /// @notice Adds a payment token to the internal allowlist.
+    /// @dev Emits `TokenAdded`. Reverts if the token is already present.
+    /// @param tokenAddress Address of the token to add (use address(0) for native BNB).
+    /// @return newIndex Index of the token inside the allowlist.
+    function _addToken(address tokenAddress) internal returns (uint256 newIndex) {
+        require(!_tokens.contains(tokenAddress), "Token is already allowed");
+        _tokens.add(tokenAddress);
+        emit TokenAdded(tokenAddress);
+        return _tokens.length() - 1;
+    }
+
+    /// @notice Removes a payment token from the internal allowlist.
+    /// @dev Emits `TokenRemoved`. Reverts if the token is not present.
+    /// @param tokenAddress Address of the token to remove (use address(0) for native BNB).
+    function _removeToken(address tokenAddress) internal {
+        require(_tokens.contains(tokenAddress), "Token is not allowed");
+        _tokens.remove(tokenAddress);
+        emit TokenRemoved(tokenAddress);
     }
 
     /// @notice Pseudo-random generator for testing/low-stakes selection.

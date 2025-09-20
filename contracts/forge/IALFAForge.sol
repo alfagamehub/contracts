@@ -34,6 +34,8 @@ interface IALFAForge {
     event BurnAccountSet(address accountAddress);
     event BurnShareSet(uint256 sharePercents);
     event TokenDiscountSet(address tokenAddress, uint256 discountPercents);
+    event TokenAdded(address indexed tokenAddress);
+    event TokenRemoved(address indexed tokenAddress);
 
     // -------- View getters (derived from public state) --------
 
@@ -51,6 +53,10 @@ interface IALFAForge {
 
     /// @notice Returns the configured burn share percentage (scaled by PERCENT_PRECISION).
     function burnShare() external view returns (uint256);
+
+    /// @notice Checks whether a payment token is currently allowed for upgrades.
+    /// @param tokenAddress Address of the payment token (use address(0) for BNB).
+    function getTokenAvailable(address tokenAddress) external view returns (bool);
 
     // -------- Read methods --------
 
@@ -92,4 +98,13 @@ interface IALFAForge {
     /// @param tokenAddress Payment token to discount (use address(0) for native BNB).
     /// @param discountPercents Discount in PERCENT_PRECISION units.
     function setTokenDiscount(address tokenAddress, uint256 discountPercents) external;
+
+    /// @notice Adds a payment token to the allowlist.
+    /// @param tokenAddress Address of the token to add (use address(0) for native BNB).
+    /// @return newIndex Index of the token inside the allowlist.
+    function addToken(address tokenAddress) external returns (uint256 newIndex);
+
+    /// @notice Removes a payment token from the allowlist.
+    /// @param tokenAddress Address of the token to remove (use address(0) for native BNB).
+    function removeToken(address tokenAddress) external;
 }
