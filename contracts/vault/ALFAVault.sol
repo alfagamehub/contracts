@@ -211,7 +211,9 @@ contract ALFAVault is AccessControl, IALFAVault {
     }
 
     function _withdraw(address tokenAddress, uint256 amount) internal {
-        require(block.timestamp > redeemUntilDate, "Holders still can redeem their reward");
+        if (_tokens.containstokenAddress)) {
+            require(block.timestamp > redeemUntilDate, "Holders still can redeem their reward");
+        }
         require(IERC20(tokenAddress).transfer(_msgSender(), amount), "Can't transfer reward");
         emit RewardWithdrawn(tokenAddress, amount, _msgSender());
     }
