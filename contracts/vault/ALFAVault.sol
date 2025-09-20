@@ -121,10 +121,10 @@ contract ALFAVault is AccessControl, IALFAVault {
         return (getVaultTokens(), _getKeysTotalAmount(), unlockDate, redeemUntilDate);
     }
 
-    /// @notice Checks if a given token is currently allowed in the vault.
-    /// @dev Returns true if the token address exists in the allowed tokens set.
-    /// @param tokenAddress The address of the ERC20 token to check.
-    /// @return True if the token is available in the vault, false otherwise.
+    /// @notice Checks if a given token address is part of the allowed vault tokens.
+    /// @dev Supports both ERC20 token addresses and the native token placeholder (address(0)) if added.
+    /// @param tokenAddress The address of the token to check.
+    /// @return True if the token is currently allowed in the vault, false otherwise.
     function getTokenAvailable(address tokenAddress) public view returns (bool) {
         return _tokens.contains(tokenAddress);
     }

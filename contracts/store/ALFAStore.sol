@@ -17,7 +17,7 @@ contract ALFAStore is AccessControl, IALFAStore {
 
     IALFAVault public immutable vault;
     IALFALootbox public immutable lootBox;
-    IALFAReferral public immutable _referral;
+    IALFAReferral private immutable _referral;
 
     address private constant PANCAKE_ROUTER = 0x10ED43C718714eb63d5aA57B78B54704E256024E; // V2 Router mainnet BSC
     address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;

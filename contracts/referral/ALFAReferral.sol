@@ -6,6 +6,9 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {IALFAReferral, ReferralPercents} from "./interfaces/IALFAReferral.sol";
 import {PERCENT_PRECISION} from "../const.sol";
 
+/// @title ALFA Referral
+/// @notice Maintains a parent-child referral tree and level-based referral percentages.
+/// @dev Provides read helpers, pagination over children, and admin/connector operations to manage relations and percents.
 contract ALFAReferral is AccessControl, IALFAReferral {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -24,6 +27,9 @@ contract ALFAReferral is AccessControl, IALFAReferral {
         _grantRole(CONNECTOR_ROLE, _msgSender());
     }
 
+    /// @notice Returns the configured referral percentages for each level.
+    /// @dev Values are scaled by PERCENT_PRECISION (e.g., 100% == PERCENT_PRECISION).
+    /// @return percents Array of percent values per referral level.
     function getPercents() external view returns (uint256[] memory) {
         return _percents;
     }
@@ -88,6 +94,11 @@ contract ALFAReferral is AccessControl, IALFAReferral {
         _addRelation(parentAddress, childAddress);
     }
 
+    /// @notice Establishes a referral chain for the caller by linking consecutive addresses.
+    /// @dev `sequence[0]` is the child (typically msg.sender), each subsequent address is its parent in order.
+    ///      The function links addresses until it hits an existing parent or the sequence ends.
+    ///      Reverts if the sequence is empty or exceeds the number of configured levels.
+    /// @param sequence Array of addresses: [child, parent1, parent2, ...].
     function setSequence(address[] calldata sequence) public onlyRole(CONNECTOR_ROLE) {
         require(sequence.length >= 1, "Referral sequence is to short");
         require(sequence.length <= _percents.length + 1, "Referral sequence is too long");
@@ -111,6 +122,10 @@ contract ALFAReferral is AccessControl, IALFAReferral {
         emit PercentsSet(percents);
     }
 
+    /// @notice (Internal) Creates a parent-child relation, replacing any existing parent for the child.
+    /// @dev Emits RelationAdded. Also removes the prior relation if present.
+    /// @param parentAddress Address to set as the parent.
+    /// @param childAddress Address to set as the child.
     function _addRelation(address parentAddress, address childAddress) internal {
         _removeRelation(childAddress);
         _parents[childAddress] = parentAddress;
@@ -118,6 +133,9 @@ contract ALFAReferral is AccessControl, IALFAReferral {
         emit RelationAdded(parentAddress, childAddress);
     }
 
+    /// @notice (Internal) Removes the existing parent-child relation for the given child, if any.
+    /// @dev Emits RelationRemoved when a relation existed and was removed.
+    /// @param childAddress Child address whose relation should be removed.
     function _removeRelation(address childAddress) internal {
         address parentAddress = _parents[childAddress];
         if (parentAddress != address(0)) {
