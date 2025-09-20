@@ -20,38 +20,67 @@ async function deployCore(deployerAddress, secondAddress) {
     await setCodeAt("0x55d398326f99059fF775485246999027B3197955", "MockUSDT");
     await setCodeAt("0x1000000000000000000000000000000000000001", "MockERC20");
     
-    // Initialize mocks (constructor-less). If `.initialize` is missing in ABI, skip gracefully.
+    // Initialize mocks (constructor-less) — idempotent guards to avoid "Already initialized"
     // USDT
     {
       const mockUSDT = await ethers.getContractAt("MockUSDT", "0x55d398326f99059fF775485246999027B3197955");
-      if (typeof mockUSDT.initialize === "function") {
-        await (await mockUSDT.initialize(18)).wait();
-      } else if (mockUSDT.interface.functions["initialize(uint8)"]) {
-        await (await mockUSDT["initialize(uint8)"](18)).wait();
-      } else {
-        console.warn("[deployCore] MockUSDT.initialize not found in ABI — skipping");
+      let needInit = false;
+      try {
+        const dec = await mockUSDT.decimals();
+        // If decimals is 0 (default), we consider not initialized
+        needInit = (Number(dec) === 0);
+      } catch (_) {
+        // If call failed or ABI mismatch, try to initialize anyway
+        needInit = true;
+      }
+      if (needInit) {
+        if (typeof mockUSDT.initialize === "function") {
+          await (await mockUSDT.initialize(18)).wait();
+        } else if (mockUSDT.interface.functions["initialize(uint8)"]) {
+          await (await mockUSDT["initialize(uint8)"](18)).wait();
+        } else {
+          console.warn("[deployCore] MockUSDT.initialize not found in ABI — skipping");
+        }
       }
     }
     // WBNB
     {
       const mockWBNB = await ethers.getContractAt("MockWBNB", "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c");
-      if (typeof mockWBNB.initialize === "function") {
-        await (await mockWBNB.initialize()).wait();
-      } else if (mockWBNB.interface.functions["initialize()"]) {
-        await (await mockWBNB["initialize()"]()).wait();
-      } else {
-        console.warn("[deployCore] MockWBNB.initialize not found in ABI — skipping");
+      let needInit = false;
+      try {
+        const nm = await mockWBNB.name();
+        needInit = (typeof nm !== "string" || nm.length === 0);
+      } catch (_) {
+        needInit = true;
+      }
+      if (needInit) {
+        if (typeof mockWBNB.initialize === "function") {
+          await (await mockWBNB.initialize()).wait();
+        } else if (mockWBNB.interface.functions["initialize()"]) {
+          await (await mockWBNB["initialize()"]()).wait();
+        } else {
+          console.warn("[deployCore] MockWBNB.initialize not found in ABI — skipping");
+        }
       }
     }
     // ALFA test token (MockERC20)
     {
       const mockERC20 = await ethers.getContractAt("MockERC20", "0x1000000000000000000000000000000000000001");
-      if (typeof mockERC20.initialize === "function") {
-        await (await mockERC20.initialize("ALFA Game", "ALFA", 18)).wait();
-      } else if (mockERC20.interface.functions["initialize(string,string,uint8)"]) {
-        await (await mockERC20["initialize(string,string,uint8)"]("ALFA Game", "ALFA", 18)).wait();
-      } else {
-        console.warn("[deployCore] MockERC20.initialize not found in ABI — skipping");
+      let needInit = false;
+      try {
+        const nm = await mockERC20.name();
+        needInit = (typeof nm !== "string" || nm.length === 0);
+      } catch (_) {
+        needInit = true;
+      }
+      if (needInit) {
+        if (typeof mockERC20.initialize === "function") {
+          await (await mockERC20.initialize("ALFA Game", "ALFA", 18)).wait();
+        } else if (mockERC20.interface.functions["initialize(string,string,uint8)"]) {
+          await (await mockERC20["initialize(string,string,uint8)"]("ALFA Game", "ALFA", 18)).wait();
+        } else {
+          console.warn("[deployCore] MockERC20.initialize not found in ABI — skipping");
+        }
       }
     }
     
@@ -132,4 +161,3 @@ async function deployCore(deployerAddress, secondAddress) {
 }
 
 module.exports = deployCore;
-
