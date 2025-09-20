@@ -32,6 +32,8 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
     /// @dev Grants DEFAULT_ADMIN_ROLE and EDITOR_ROLE to the deployer and adds initial token types
     constructor() ERC721("ALFA Key", "ALKEY") {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(MINTER_ROLE, _msgSender());
+        _grantRole(BURNER_ROLE, _msgSender());
         _grantRole(EDITOR_ROLE, _msgSender());
 
         _addType("Green Gorilla", "https://api.alfagame.xyz/static/keys/green.mp4");
@@ -143,6 +145,7 @@ contract ALFAKey is ERC721, AccessControl, IALFAKey {
         _requireTypeExists(typeId);
         newTokenId = _tokenIndex++;
 
+        _tokenType[newTokenId] = typeId;
         _mint(receiver, newTokenId);
         emit TokenMinted(typeId, receiver, newTokenId, _typeCount[typeId]);
     }

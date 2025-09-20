@@ -23,7 +23,7 @@ contract MockPancakeRouter is IPancakeRouter {
     /// @param tokenOut Output token
     /// @param num      Numerator in the fraction
     /// @param den      Denominator in the fraction (must be > 0)
-    function setRate(address tokenIn, address tokenOut, uint256 num, uint256 den) external {
+    function setRate(address tokenIn, address tokenOut, uint256 num, uint256 den) public {
         require(den != 0, "DEN=0");
         rate[tokenIn][tokenOut] = Rate({num: num, den: den});
         emit RateSet(tokenIn, tokenOut, num, den);

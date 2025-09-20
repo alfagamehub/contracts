@@ -6,7 +6,13 @@ import "./MockERC20.sol";
 /// @title MockWBNB
 /// @notice Minimal WBNB wrapper with deposit/withdraw for tests.
 contract MockWBNB is MockERC20 {
-    constructor() MockERC20("Wrapped BNB (Mock)", "WBNB", 18) {}
+
+    /// @notice Initializes Wrapped BNB mock metadata after code injection (constructor-less).
+    /// @dev Calls parent initializer once to set name/symbol/decimals.
+    function initialize() external {
+        // Call the parent external initializer via an external call to this contract
+        MockERC20(address(this)).initialize("Wrapped BNB (Mock)", "WBNB", 18);
+    }
 
     /// @notice Wrap native BNB to WBNB 1:1
     receive() external payable {

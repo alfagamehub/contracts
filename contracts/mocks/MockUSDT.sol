@@ -6,5 +6,11 @@ import "./MockERC20.sol";
 /// @title MockUSDT
 /// @notice Test USDT token; choose decimals in constructor (6 or 18 typically).
 contract MockUSDT is MockERC20 {
-    constructor(uint8 usdtDecimals) MockERC20("Tether USD (Mock)", "USDT", usdtDecimals) {}
+    /// @notice Initializes the mock USDT token after code injection (constructor-less).
+    /// @dev Can only be called once; sets decimals to match USDT variants.
+    /// @param usdtDecimals Number of decimals (6 or 18 typically).
+    function initialize(uint8 usdtDecimals) public {
+        require(decimals == 0, "Already initialized");
+        assembly { sstore(decimals.slot, usdtDecimals) }
+    }
 }

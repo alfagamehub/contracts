@@ -6,7 +6,7 @@ pragma solidity ^0.8.24;
 contract MockERC20 {
     string public name;
     string public symbol;
-    uint8  public immutable decimals;
+    uint8  public decimals;
 
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
@@ -15,10 +15,16 @@ contract MockERC20 {
     event Transfer(address indexed from, address indexed to, uint256 amount);
     event Approval(address indexed owner, address indexed spender, uint256 amount);
 
-    constructor(string memory _name, string memory _symbol, uint8 _decimals) {
+    /// @notice Initializes the token after code injection (constructor-less).
+    /// @dev Can only be called once; sets name, symbol, decimals.
+    /// @param _name Token name
+    /// @param _symbol Token symbol
+    /// @param _decimals Token decimals
+    function initialize(string memory _name, string memory _symbol, uint8 _decimals) public {
+        require(bytes(name).length == 0 && bytes(symbol).length == 0, "Already initialized");
         name = _name;
         symbol = _symbol;
-        decimals = _decimals;
+        assembly { sstore(decimals.slot, _decimals) }
     }
 
     function approve(address spender, uint256 amount) external returns (bool) {

@@ -36,6 +36,8 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
     /// @param keysAddress Address of the keys token contract used for drops
     constructor(address keysAddress) ERC721("ALFA Lootbox", "ALBOX") {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(MINTER_ROLE, _msgSender());
+        _grantRole(BURNER_ROLE, _msgSender());
         _grantRole(EDITOR_ROLE, _msgSender());
 
         _addType("Common", "https://api.alfagame.xyz/static/boxes/green.mp4");
@@ -190,6 +192,7 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         _requireTypeExists(typeId);
         newTokenId = _tokenIndex++;
 
+        _tokenType[newTokenId] = typeId;
         _mint(receiver, newTokenId);
         emit TokenMinted(typeId, receiver, newTokenId, _typeCount[typeId]);
     }
