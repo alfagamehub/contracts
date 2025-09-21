@@ -2,6 +2,7 @@ const deployAndSetupContracts = require("./fixtures/deployCore.js");
 const {
   ZERO_ADDRESS,
 } = require("./fixtures/const");
+const {expect} = require("chai");
 const {ethers, network} = require("hardhat");
 
 const PERCENT_PRECISION = ethers.BigNumber.from(1_000_000);
@@ -21,7 +22,6 @@ describe("ALFAForge Contract", function () {
   });
 
   it("should quote non-zero BNB price for upgrades", async function () {
-    const {expect} = await import("chai");
     const {ALFAForge} = contracts;
 
     const prices = await ALFAForge.getPrices();
@@ -35,7 +35,6 @@ describe("ALFAForge Contract", function () {
   });
 
   it("should revert upgrade with unsupported token", async function () {
-    const {expect} = await import("chai");
     const {ALFAKey, ALFAForge, MockERC20} = contracts;
 
     const mintTx = await ALFAKey.connect(owner).mint(holder.address, 1);
@@ -43,12 +42,11 @@ describe("ALFAForge Contract", function () {
     const tokenId = mintReceipt.events.find(e => e.event === "TokenMinted").args.tokenId;
 
     await expect(
-      ALFAForge.connect(holder).upgrade(tokenId, MockERC20.address)
+      ALFAForge.connect(holder)["upgrade(uint256,address)"](tokenId, MockERC20.address)
     ).to.be.revertedWith("Token is not allowed");
   });
 
   it("should manage payment token allowlist", async function () {
-    const {expect} = await import("chai");
     const {ALFAForge, MockERC20} = contracts;
 
     await expect(ALFAForge.connect(owner).addToken(MockERC20.address))
@@ -68,7 +66,6 @@ describe("ALFAForge Contract", function () {
   });
 
   it("should distribute ERC20 payments across referrals, team and burn", async function () {
-    const {expect} = await import("chai");
     const {ALFAForge, ALFAKey, ALFAReferral, MockERC20} = contracts;
 
     if (!(await ALFAForge.getTokenAvailable(MockERC20.address))) {
@@ -98,7 +95,7 @@ describe("ALFAForge Contract", function () {
     const burnBefore = await MockERC20.balanceOf(burn.address);
     const holderBefore = await MockERC20.balanceOf(holder.address);
 
-    const tx = await ALFAForge.connect(holder).upgrade(tokenId, MockERC20.address);
+    const tx = await ALFAForge.connect(holder)["upgrade(uint256,address)"](tokenId, MockERC20.address);
     const receipt = await tx.wait();
 
     const refs = await ALFAReferral.getReferralPercents(holder.address);
@@ -147,7 +144,6 @@ describe("ALFAForge Contract", function () {
   });
 
   it("should accept native payments and refill burn account", async function () {
-    const {expect} = await import("chai");
     const {ALFAForge, ALFAKey} = contracts;
 
     const mintTx = await ALFAKey.connect(owner).mint(refFree.address, 1);
