@@ -4,7 +4,7 @@ require('hardhat-ignore-warnings');
 require("hardhat-contract-sizer");
 
 const accounts = require('../accounts');
-const account = accounts.emSeven;
+const account = accounts.alfa;
 
 const networks = {
   localhost: {
