@@ -43,7 +43,7 @@ describe("ALFAForge Contract", function () {
     const tokenId = mintReceipt.events.find(e => e.event === "TokenMinted").args.tokenId;
 
     await expect(
-      ALFAForge.connect(holder).upgrade(tokenId, MockERC20.address)
+      ALFAForge.connect(holder)["upgrade(uint256,address)"](tokenId, MockERC20.address)
     ).to.be.revertedWith("Token is not allowed");
   });
 
@@ -98,7 +98,7 @@ describe("ALFAForge Contract", function () {
     const burnBefore = await MockERC20.balanceOf(burn.address);
     const holderBefore = await MockERC20.balanceOf(holder.address);
 
-    const tx = await ALFAForge.connect(holder).upgrade(tokenId, MockERC20.address);
+    const tx = await ALFAForge.connect(holder)["upgrade(uint256,address)"](tokenId, MockERC20.address);
     const receipt = await tx.wait();
 
     const refs = await ALFAReferral.getReferralPercents(holder.address);
