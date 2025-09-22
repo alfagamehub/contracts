@@ -44,16 +44,15 @@ describe("ALFAVault Contract", function () {
     await ALFAKey.connect(owner).mint(user.address, MASTER_KEY_TYPE_ID);
 
     const totalKeys = await ALFAVault.getKeysTotalAmount();
-    expect(totalKeys).to.equal(3);
-
+    expect(totalKeys.toNumber()).to.equal(3);
     const ownerShare = await ALFAVault.getHolderShare(owner.address);
     const userShare = await ALFAVault.getHolderShare(user.address);
 
     const expectedOwnerShare = PERCENT_PRECISION.mul(2).div(3);
     const expectedUserShare = PERCENT_PRECISION.div(3);
 
-    expect(ownerShare).to.equal(expectedOwnerShare);
-    expect(userShare).to.equal(expectedUserShare);
+    expect(ownerShare.toString()).to.equal(expectedOwnerShare.toString());
+    expect(userShare.toString()).to.equal(expectedUserShare.toString());
   });
 
   it("should allow holder to redeem their share within the redemption window", async function () {
@@ -95,10 +94,10 @@ describe("ALFAVault Contract", function () {
     const userUSDTAfter = await MockUSDT.balanceOf(user.address);
     const totalKeysAfter = await ALFAVault.getKeysTotalAmount();
 
-    expect(vaultBNBBefore.sub(vaultBNBAfter)).to.equal(expectedShareBNB);
-    expect(vaultUSDTBefore.sub(vaultUSDTAfter)).to.equal(expectedShareUSDT);
-    expect(userUSDTAfter.sub(userUSDTBefore)).to.equal(expectedShareUSDT);
-    expect(totalKeysAfter).to.equal(totalKeys.sub(1));
-    expect(await ALFAKey.balanceOf(user.address)).to.equal(0);
+    expect(vaultBNBBefore.sub(vaultBNBAfter).toString()).to.equal(expectedShareBNB.toString());
+    expect(vaultUSDTBefore.sub(vaultUSDTAfter).toString()).to.equal(expectedShareUSDT.toString());
+    expect(userUSDTAfter.sub(userUSDTBefore).toString()).to.equal(expectedShareUSDT.toString());
+    expect(totalKeysAfter.toString()).to.equal(totalKeys.sub(1).toString());
+    expect((await ALFAKey.balanceOf(user.address)).toNumber()).to.equal(0);
   });
 });
