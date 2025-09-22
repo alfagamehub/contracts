@@ -112,4 +112,80 @@ describe("ALFAForge Contract", function () {
     expect(upgradeEvent.args.holder, '7').to.equal(holder.address);
     expect(Number(upgradeEvent.args.typeId), '8').to.equal(1);
   });
+  
+  it("should distribute BNB payments across referrals, team and burn", async function () {
+    const {expect} = await import("chai");
+    const {ALFAForge, ALFAKey, ALFAReferral, MockERC20} = contracts;
+    
+    if (!(await ALFAForge.getTokenAvailable(MockERC20.address))) {
+      await ALFAForge.connect(owner).addToken(MockERC20.address);
+    }
+    
+    const mintTx = await ALFAKey.connect(owner).mint(holder.address, 1);
+    const mintReceipt = await mintTx.wait();
+    const tokenId = mintReceipt.events.find(e => e.event === "TokenMinted").args.tokenId;
+    
+    await ALFAReferral.connect(owner).setSequence([
+      holder.address,
+      parent.address,
+      grandpa.address,
+    ]);
+    
+    const prices = await ALFAForge.getPrices();
+    const bnbEntry = prices[0].find(p => p.tokenAddress.toLowerCase() === ZERO_ADDRESS.toLowerCase());
+    const price = bnbEntry.amount;
+    
+    const parentBefore = await ethers.provider.getBalance(parent.address);
+    const grandpaBefore = await ethers.provider.getBalance(grandpa.address);
+    const teamBefore = await ethers.provider.getBalance(team.address);
+    const burnBefore = await ethers.provider.getBalance(burn.address);
+    const holderBefore = await ethers.provider.getBalance(holder.address);
+    
+    const tx = await ALFAForge.connect(holder)["upgrade(uint256)"](tokenId, {value: price});
+    const receipt = await tx.wait();
+    
+    const refs = await ALFAReferral.getReferralPercents(holder.address);
+    let percentsLeft = PERCENT_PRECISION;
+    let expectedParent = ethers.BigNumber.from(0);
+    let expectedGrandpa = ethers.BigNumber.from(0);
+    
+    for (let i = 0; i < refs.length; i++) {
+      if (refs[i].parentAddress === ZERO_ADDRESS) break;
+      percentsLeft = percentsLeft.sub(refs[i].percents);
+      if (i === 0) {
+        expectedParent = price.mul(refs[i].percents).div(PERCENT_PRECISION);
+      }
+      if (i === 1) {
+        expectedGrandpa = price.mul(refs[i].percents).div(PERCENT_PRECISION);
+      }
+    }
+    
+    const burnShare = await ALFAForge.burnShare();
+    const teamSharePercents = percentsLeft.gt(burnShare)
+      ? percentsLeft.sub(burnShare)
+      : ethers.BigNumber.from(0);
+    const burnSharePercents = percentsLeft.gt(burnShare)
+      ? burnShare
+      : percentsLeft;
+    
+    const expectedTeam = price.mul(teamSharePercents).div(PERCENT_PRECISION);
+    const expectedBurn = price.mul(burnSharePercents).div(PERCENT_PRECISION);
+    
+    const parentAfter = await ethers.provider.getBalance(parent.address);
+    const grandpaAfter = await ethers.provider.getBalance(grandpa.address);
+    const teamAfter = await ethers.provider.getBalance(team.address);
+    const burnAfter = await ethers.provider.getBalance(burn.address);
+    const holderAfter = await ethers.provider.getBalance(holder.address);
+    
+    expect(Number(parentAfter.sub(parentBefore)), '1').to.greaterThanOrEqual(Number(expectedParent));
+    expect(Number(grandpaAfter.sub(grandpaBefore)), '2').to.greaterThanOrEqual(Number(expectedGrandpa));
+    expect(Number(teamAfter.sub(teamBefore)), '3').to.greaterThanOrEqual(Number(expectedTeam));
+    expect(Number(burnAfter.sub(burnBefore)), '4').to.greaterThanOrEqual(Number(expectedBurn));
+    expect(Number(holderBefore.sub(holderAfter)), '5').to.greaterThanOrEqual(Number(price));
+    
+    const upgradeEvent = receipt.events.find(e => e.event === "KeyUpgraded" || e.event === "KeyBurned");
+    expect(upgradeEvent, '6').to.not.equal(undefined);
+    expect(upgradeEvent.args.holder, '7').to.equal(holder.address);
+    expect(Number(upgradeEvent.args.typeId), '8').to.equal(1);
+  });
 });
