@@ -45,7 +45,6 @@ describe("ALFAVault Contract", function () {
 
     const totalKeys = await ALFAVault.getKeysTotalAmount();
     expect(totalKeys.toNumber()).to.equal(3);
-
     const ownerShare = await ALFAVault.getHolderShare(owner.address);
     const userShare = await ALFAVault.getHolderShare(user.address);
 
