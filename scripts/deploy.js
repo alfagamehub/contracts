@@ -1,4 +1,4 @@
-const hre = require("hardhat");
+import hre from "hardhat";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
@@ -36,10 +36,12 @@ async function main() {
   const networkName = hre.network.name;
   console.log("");
   console.log("DEPLOY TO", networkName);
+  await hre.run("compile");
 
   const customChain = hre.config
     .etherscan?.customChains
     ?.find(chain => chain.network === networkName);
+  console.log('customChain', customChain);
 
   const deployments = {};
 
@@ -88,6 +90,43 @@ async function main() {
       );
     }),
   };
+  
+  // deployed.ALFAKey = {address: '0x77E6C35e334C0d2775800Fc0cE836E8811E68067'};
+  // deployed.ALFALootbox = {address: '0x96BdC597E6e2177DD31ad2343a6a22Bd0B0829f3'};
+  // deployed.ALFAReferral = {address: '0x31585A8013d4CBa3c0AFE8Ce6530fae17a86b96A'};
+  // deployed.ALFAVault = {address: '0x4674EaA6EA50Ab407b5Ba272c55baF5C73CDedbD'};
+  // deployed.ALFAStore = {address: '0xAF2DB160011D7b770C16de7Dda84E011868D19ca'};
+  // deployed.ALFAForge = {address: '0x6d747444DDbe9a79ac280900aBd36eb9B47d5338'};
+  //
+  // for (let i = 0; i < Object.keys(deployed).length; i++) {
+  //   const contractNames = Object.keys(contracts);
+  //   const name = contractNames[i];
+  //   const params = contracts[name];
+  //
+  //   const args = await Promise.all((params.args || []).map(async argument => {
+  //     return typeof argument === "function"
+  //       ? await argument()
+  //       : argument;
+  //   }));
+  //   console.log('name', name, args);
+  //
+  //   try {
+  //     await hre.run("verify:verify", {
+  //       address: deployed[name].address,
+  //       constructorArguments: args,
+  //     });
+  //     const explorerBase = customChain?.urls?.browserURL || EXPLORER_URLS[networkName];
+  //     if (explorerBase) {
+  //       console.log("Contract verified at:");
+  //       console.log(`${explorerBase}/address/${deployed[name].address}`);
+  //     } else {
+  //       console.log("Contract verified");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error verifying contract", name, error.message ?? error);
+  //   }
+  // }
+  // return;
 
   const contractNames = Object.keys(contracts);
 
@@ -198,4 +237,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-

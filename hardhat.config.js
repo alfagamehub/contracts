@@ -71,14 +71,14 @@ module.exports = {
           browserURL: "https://lanky-ill-funny-testnet.explorer.testnet.skalenodes.com"
         }
       },
-      // {
-      //   network: "bsc",
-      //   chainId: 56,
-      //   urls: {
-      //     apiURL: "https://api.etherscan.io/v2/api?chainid=56",
-      //     browserURL: "https://bscscan.com"
-      //   }
-      // },
+      {
+        network: "bsc",
+        chainId: 56,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=56",
+          browserURL: "https://bscscan.com"
+        }
+      },
     ]
   }
 };
