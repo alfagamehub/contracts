@@ -107,7 +107,7 @@ contract ALFALootbox is ERC721, AccessControl, IALFALootbox {
         if (limit < length) length = limit;
         HolderToken[] memory data = new HolderToken[](length);
         for (uint256 i; i < length; i++) {
-            data[i].tokenId = _holderTokens[holder].at(i);
+            data[i].tokenId = _holderTokens[holder].at(offset + i);
             data[i].typeId = _tokenType[data[i].tokenId];
         }
         return (data, count);

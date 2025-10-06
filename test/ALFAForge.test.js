@@ -42,9 +42,13 @@ describe("ALFAForge Contract", function () {
       await ALFAForge.connect(owner).addToken(MockERC20.address);
     }
 
-    const mintTx = await ALFAKey.connect(owner).mint(holder.address, 1);
-    const mintReceipt = await mintTx.wait();
-    const tokenId = mintReceipt.events.find(e => e.event === "TokenMinted").args.tokenId;
+    const tokenIds = [];
+    for (let i = 0; i < 5; i++) {
+      const mintTx = await ALFAKey.connect(owner).mint(holder.address, 1);
+      const mintReceipt = await mintTx.wait();
+      const mintedId = mintReceipt.events.find(e => e.event === "TokenMinted").args.tokenId;
+      tokenIds.push(mintedId);
+    }
 
     await ALFAReferral.connect(owner).setSequence([
       holder.address,
@@ -65,7 +69,7 @@ describe("ALFAForge Contract", function () {
     const burnBefore = await MockERC20.balanceOf(burn.address);
     const holderBefore = await MockERC20.balanceOf(holder.address);
 
-    const tx = await ALFAForge.connect(holder)["upgrade(uint256,address)"](tokenId, MockERC20.address);
+    const tx = await ALFAForge.connect(holder)["upgrade(uint256[],address)"](tokenIds, MockERC20.address);
     const receipt = await tx.wait();
 
     const refs = await ALFAReferral.getReferralPercents(holder.address);
@@ -121,9 +125,13 @@ describe("ALFAForge Contract", function () {
       await ALFAForge.connect(owner).addToken(MockERC20.address);
     }
     
-    const mintTx = await ALFAKey.connect(owner).mint(holder.address, 1);
-    const mintReceipt = await mintTx.wait();
-    const tokenId = mintReceipt.events.find(e => e.event === "TokenMinted").args.tokenId;
+    const tokenIds = [];
+    for (let i = 0; i < 5; i++) {
+      const mintTx = await ALFAKey.connect(owner).mint(holder.address, 1);
+      const mintReceipt = await mintTx.wait();
+      const mintedId = mintReceipt.events.find(e => e.event === "TokenMinted").args.tokenId;
+      tokenIds.push(mintedId);
+    }
     
     await ALFAReferral.connect(owner).setSequence([
       holder.address,
@@ -141,7 +149,7 @@ describe("ALFAForge Contract", function () {
     const burnBefore = await ethers.provider.getBalance(burn.address);
     const holderBefore = await ethers.provider.getBalance(holder.address);
     
-    const tx = await ALFAForge.connect(holder)["upgrade(uint256)"](tokenId, {value: price});
+    const tx = await ALFAForge.connect(holder)["upgrade(uint256[])"](tokenIds, { value: price });
     const receipt = await tx.wait();
     
     const refs = await ALFAReferral.getReferralPercents(holder.address);

@@ -12,7 +12,7 @@ import {IPancakeRouter} from "../store/interfaces/IPancakeRouter.sol";
 import {PERCENT_PRECISION} from "../const.sol";
 
 /// @title ALFA Forge
-/// @notice Upgrades ALFA Key NFTs by burning the source key and minting a new key according to configured drop chances.
+/// @notice Upgrades ALFA Key NFTs by burning five source keys and minting a new key according to configured drop chances.
 /// @dev Accepts payments in ERC20 tokens or native BNB, quotes prices from USDT via PancakeSwap V2, and distributes proceeds among referrals, team, and burn account.
 contract ALFAForge is AccessControl, IALFAForge {
 
@@ -140,22 +140,22 @@ contract ALFAForge is AccessControl, IALFAForge {
     /// Write methods
 
     /// @notice Upgrades a key by paying with an ERC20 token.
-    /// @dev Charges the quoted price, distributes proceeds, burns the original key, and mints a new key based on drop chances.
-    /// @param tokenId ID of the key to upgrade (must be owned by caller).
+    /// @dev Requires exactly 5 token IDs of the same type owned by the caller. Charges the quoted price, distributes proceeds, burns the five source keys, and mints a new key based on drop chances.
+    /// @param tokenId Array of exactly 5 key IDs to upgrade (all must belong to the caller and be of the same type).
     /// @param tokenAddress ERC20 token used for payment (must be in the allowlist).
     /// @return newItemId ID of the newly minted key if upgrade hits a non-zero type; otherwise emits burn-only event.
-    function upgrade(uint256 tokenId, address tokenAddress) public returns (uint256 newItemId) {
-        _pay(tokenId, tokenAddress);
-        newItemId = _upgrade(tokenId);
+    function upgrade(uint256[] memory tokenId, address tokenAddress) public returns (uint256 newItemId) {
+        uint256 typeId = _pay(tokenId, tokenAddress);
+        newItemId = _upgrade(tokenId, typeId);
     }
 
     /// @notice Upgrades a key by paying with native BNB.
-    /// @dev Quotes USDT price to BNB, distributes proceeds, burns the original key, mints new key per drop table, and refunds excess BNB.
-    /// @param tokenId ID of the key to upgrade (must be owned by caller).
+    /// @dev Requires exactly 5 token IDs of the same type owned by the caller. Quotes USDT price to BNB, distributes proceeds, burns the five source keys, mints a new key per drop table, and refunds excess BNB.
+    /// @param tokenId Array of exactly 5 key IDs to upgrade (all must belong to the caller and be of the same type).
     /// @return newItemId ID of the newly minted key if upgrade hits a non-zero type; otherwise emits burn-only event.
-    function upgrade(uint256 tokenId) public payable returns (uint256 newItemId) {
-        _pay(tokenId, address(0));
-        newItemId = _upgrade(tokenId);
+    function upgrade(uint256[] memory tokenId) public payable returns (uint256 newItemId) {
+        uint256 typeId = _pay(tokenId, address(0));
+        newItemId = _upgrade(tokenId, typeId);
     }
 
 
@@ -227,6 +227,14 @@ contract ALFAForge is AccessControl, IALFAForge {
         require(_tokens.contains(tokenAddress), "Token is not allowed");
     }
 
+    function _requireSameType(uint256[] memory tokenId) internal view returns (uint256 typeId) {
+        require(tokenId.length == 5, "Not enough keys for upgrade");
+        typeId = key.tokenTypeId(tokenId[0]);
+        for (uint256 i = 1; i < tokenId.length; i++) {
+            require(key.tokenTypeId(tokenId[i]) == typeId, "All keys must be of the same type");
+        }
+    }
+
     /// @notice Appends a drop chance entry for a given upgrade type.
     /// @dev `drop.typeId` is the resulting type; `drop.chance` is in PERCENT_PRECISION. Returns the new entry index (1-based).
     /// @param typeId Source key type to configure.
@@ -286,14 +294,15 @@ contract ALFAForge is AccessControl, IALFAForge {
         return 0;
     }
 
-    /// @notice Burns the original key and mints a new key according to the rolled drop.
+    /// @notice Burns the five source keys and mints a new key according to the rolled drop.
     /// @dev Emits `KeyUpgraded` when a new key is minted; otherwise emits `KeyBurned`.
-    /// @param tokenId ID of the key being upgraded (already validated/paid by caller).
+    /// @param tokenId Array of exactly 5 key IDs being upgraded (already validated/paid by caller).
     /// @return nftItemId New key ID if minted, otherwise 0.
-    function _upgrade(uint256 tokenId) internal returns (uint256 nftItemId) {
+    function _upgrade(uint256[] memory tokenId, uint256 typeId) internal returns (uint256 nftItemId) {
         address holder = _msgSender();
-        uint256 typeId = key.tokenTypeId(tokenId);
-        key.burn(holder, tokenId);
+        for (uint256 i; i < tokenId.length; i++) {
+            key.burn(holder, tokenId[i]);
+        }
 
         uint256 rarity = _rollDrop(typeId);
         UpgradeChance storage drop = _typeDrop[typeId][rarity];
@@ -419,21 +428,23 @@ contract ALFAForge is AccessControl, IALFAForge {
     }
 
     /// @notice Validates ownership and availability, computes the price (including discounts), and collects payment.
-    /// @dev Dispatches to native or ERC20 branch; on native, refunds excess to caller (or forwards to vault if refund fails).
-    /// @param tokenId Key ID to upgrade.
+    /// @dev Requires exactly 5 token IDs of the same type owned by the caller. Dispatches to native or ERC20 branch; on native, refunds excess to caller (or forwards to vault if refund fails).
+    /// @param tokenId Array of exactly 5 key IDs to upgrade.
     /// @param tokenAddress Payment token (address(0) for BNB).
-    /// @return price Final charged amount in the payment token's raw units.
-    function _pay(uint256 tokenId, address tokenAddress) internal returns (uint256 price) {
-        uint256 typeId = key.tokenTypeId(tokenId);
+    /// @return typeId The source key type shared by the provided IDs.
+    function _pay(uint256[] memory tokenId, address tokenAddress) internal returns (uint256 typeId) {
+        typeId = _requireSameType(tokenId);
         address holder = _msgSender();
-        require(holder == key.ownerOf(tokenId), "Wrong token owner");
+        for (uint256 i = 0; i < tokenId.length; i++) {
+            require(holder == key.ownerOf(tokenId[i]), "Wrong token owner");
+        }
         require(block.timestamp < vault.unlockDate(), "Sale is not available");
         require(typeId < key.getTypes().length && _prices[typeId] > 0, "Upgrade of this NFT type is not available");
         _requireTokenAvailable(tokenAddress);
         
         /// Get initial data
         ReferralPercents[] memory refs = _referral.getReferralPercents(holder);
-        price = tokenAddress == address(0)
+        uint256 price = tokenAddress == address(0)
             ? _quoteBNBForUSDT(_prices[typeId])
             : _quoteTokenForUSDT(tokenAddress, _prices[typeId]);
         price -= price * _discount[tokenAddress] / PERCENT_PRECISION;

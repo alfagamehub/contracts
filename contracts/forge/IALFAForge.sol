@@ -23,8 +23,8 @@ interface IALFAForge {
     event TypeDropAdded(uint256 indexed typeId, uint256 dropIndex, UpgradeChance drop);
     event TypeDropCleared(uint256 indexed typeId);
 
-    event KeyUpgraded(address indexed holder, uint256 typeId, uint256 tokenId, uint256 newTypeId, uint256 newTokenId);
-    event KeyBurned(address indexed holder, uint256 typeId, uint256 tokenId);
+    event KeyUpgraded(address indexed holder, uint256 typeId, uint256[] tokenId, uint256 newTypeId, uint256 newTokenId);
+    event KeyBurned(address indexed holder, uint256 typeId, uint256[] tokenId);
 
     event PriceSet(uint256 typeId, uint256 price);
     event ReferralRewardSent(address indexed holder, address indexed receiver, address indexed child, address tokenAddress, uint256 tokenAmount);
@@ -71,12 +71,12 @@ interface IALFAForge {
     /// @param tokenId ID of the key to upgrade (must be owned by caller).
     /// @param tokenAddress ERC20 token used for payment (must be in the allowlist).
     /// @return newItemId ID of the newly minted key if upgrade hits a non-zero type; otherwise 0.
-    function upgrade(uint256 tokenId, address tokenAddress) external returns (uint256 newItemId);
+    function upgrade(uint256[] memory tokenId, address tokenAddress) external returns (uint256 newItemId);
 
     /// @notice Upgrades a key by paying with native BNB.
     /// @param tokenId ID of the key to upgrade (must be owned by caller).
     /// @return newItemId ID of the newly minted key if upgrade hits a non-zero type; otherwise 0.
-    function upgrade(uint256 tokenId) external payable returns (uint256 newItemId);
+    function upgrade(uint256[] memory tokenId) external payable returns (uint256 newItemId);
 
     /// @notice Sets USDT-denominated upgrade prices per key type.
     /// @param prices Array of prices in USDT (raw units), indexed by typeId.
