@@ -41,7 +41,7 @@ const networks = {
   bsc: {
     url: "https://bsc-dataseed1.bnbchain.org",
     chainId: 56,
-    gasPrice: 1600000000,
+    gasPrice: 100000000,
     ...(bscAccounts ? {accounts: bscAccounts} : {}),
   },
 };

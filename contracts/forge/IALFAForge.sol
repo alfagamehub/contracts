@@ -24,7 +24,7 @@ interface IALFAForge {
     event TypeDropCleared(uint256 indexed typeId);
 
     event KeyUpgraded(address indexed holder, uint256 typeId, uint256[] tokenId, uint256 newTypeId, uint256 newTokenId);
-    event KeyBurned(address indexed holder, uint256 typeId, uint256[] tokenId);
+    event KeyBurned(address indexed holder, uint256 typeId, uint256 tokenId);
 
     event PriceSet(uint256 typeId, uint256 price);
     event ReferralRewardSent(address indexed holder, address indexed receiver, address indexed child, address tokenAddress, uint256 tokenAmount);
