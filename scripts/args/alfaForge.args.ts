@@ -1,0 +1,8 @@
+const constructorArgs = [
+  "0x0f2F071870c3e25E02565c12729032e986b4f011", // ALFAKey
+  "0x04A0600F50BF6a213939d3820568CE2efdAbE9a4", // BURN_ACCOUNT
+  "0xC957d27C5dB79e3a13b0a1ec0df32580A82C03cc", // ALFAReferral
+  "0x16B07eE9b3fa66FC6513247542d6FEb112E01D58"  // ALFAVault
+];
+
+export default constructorArgs;

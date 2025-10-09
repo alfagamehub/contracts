@@ -5,35 +5,39 @@
     "type": "git"
   },
   "engines": {
-    "node": "16.14.2"
+    "node": "22.17.0"
   },
+  "version": "1.0.0",
+  "type": "module",
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.2.3",
-    "@nomiclabs/hardhat-waffle": "^2.0.6",
-    "@types/sinon-chai": "^3.2.12",
-    "chai": "^5.1.0",
-    "ethereum-waffle": "^3.4.4",
-    "ethers": "^5.7.2",
-    "hardhat": "^2.21.0",
-    "hardhat-contract-sizer": "^2.10.0",
-    "hardhat-gas-reporter": "^2.2.1"
-  },
-  "dependencies": {
-    "@nomicfoundation/hardhat-verify": "^2.0.9",
-    "@nomiclabs/hardhat-etherscan": "^3.0.3",
-    "@openzeppelin/contracts": "^5.0.2",
-    "@prb/math": "^4.1.0",
-    "@uniswap/v2-core": "^1.0.1",
-    "dotenv": "^16.0.1",
-    "hardhat-ignore-warnings": "^0.2.12"
+    "@nomicfoundation/hardhat-ethers": "^4.0.2",
+    "@nomicfoundation/hardhat-ignition-viem": "^3.0.3",
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-verify": "^3.0.3",
+    "@types/chai": "^4.3.20",
+    "@types/chai-as-promised": "^8.0.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.18.8",
+    "chai": "^5.3.3",
+    "ethers": "^6.15.0",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
+    "hardhat": "^3.0.7",
+    "mocha": "^11.7.4",
+    "tsx": "^4.20.6",
+    "typescript": "~5.8.0"
   },
   "scripts": {
     "compile": "npx hardhat compile",
     "deploy": "npx hardhat run scripts/deploy.js --network bsc",
-    "deployForge": "npx hardhat run scripts/deployForge.js --network bsc",
+    "deploy:forge": "npx hardhat ignition deploy ignition/modules/ALFAForgeModule.ts --network bsc --parameters ignition/parameters.json --deployment-id alfa-bsc-009 --verify --build-profile default",
     "deployStaking": "npx hardhat run scripts/deployStaking.js --network bsc",
     "test": "npx hardhat test",
-    "clean": "npx hardhat clean"
+    "clean": "npx hardhat clean",
+    "ignition:help": "npx hardhat ignition --help",
+    "debug:bytecode": "ADDR=$ADDR npx hardhat run scripts/compareBytecode.ts --network bsc",
+    "verify": "npx hardhat run scripts/verify.ts --network bsc"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0"
   }
 }
-

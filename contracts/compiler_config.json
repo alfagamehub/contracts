@@ -1,4 +1,3 @@
-
 {
 	"language": "Solidity",
 	"settings": {
@@ -6,6 +5,7 @@
 			"enabled": true,
 			"runs": 200
 		},
+    "viaIR": false,
 		"outputSelection": {
 			"*": {
 			"": ["ast"],
