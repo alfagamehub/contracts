@@ -31,6 +31,7 @@
     "compile": "npx hardhat compile",
     "deploy": "npx hardhat run scripts/deploy.js --network bsc",
     "deployForge": "npx hardhat run scripts/deployForge.js --network bsc",
+    "deployBalances": "npx hardhat run scripts/deployBalances.js --network bsc",
     "deployStaking": "npx hardhat run scripts/deployStaking.js --network bsc",
     "test": "npx hardhat test",
     "clean": "npx hardhat clean"

@@ -55,4 +55,8 @@ contract MockPancakeRouter is IPancakeRouter {
             amounts[i + 1] = amounts[i] * r.num / r.den;
         }
     }
+
+    function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts) {
+        
+    }
 }
