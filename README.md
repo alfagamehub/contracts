@@ -1,4 +1,4 @@
-# AlfaGame Smart Contracts
+# Alfa Protocol BNB Smart Contracts
 
 This repository contains the on-chain components for the AlfaGame project, implemented with the Hardhat development framework.
 
